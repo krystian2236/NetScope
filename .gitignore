@@ -12,7 +12,9 @@ Packages/
 
 # Distribution and macOS metadata
 *.ipa
+*.dSYM/
 *.dSYM.zip
+*.xcarchive/
 .DS_Store
 
 # Local Git worktrees
