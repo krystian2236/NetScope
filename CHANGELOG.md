@@ -1,0 +1,46 @@
+# NetScope — historia zmian
+
+## 1.3
+
+- dodano ekran szczegółów przebiegu skanowania,
+- dodano liczbę zaplanowanych i wykonanych prób TCP,
+- dodano podział odpowiedzi na otwarte, zamknięte, bez odpowiedzi i bez dostępu,
+- dodano czas wykrywania urządzenia oraz opóźnienie poszczególnych usług,
+- dodano generator poleceń i skryptów dla iSH,
+- dodano profile iSH: inwentaryzacja, rozszerzony TCP i szczegóły usług,
+- ograniczono generowane cele iSH do prywatnych adresów IPv4,
+- dodano samodzielny skrypt `NetScope-iSH-Toolkit.sh`,
+- rozszerzono testy telemetrii i generatora poleceń.
+
+## 1.2
+
+- przebudowano aplikację na pięć kompaktowych zakładek,
+- dodano pulpit z podsumowaniem sieci i historią skanów,
+- dodano profil rozszerzony i zwiększono zakres własny do 512 portów,
+- dodano profile zdalnego dostępu oraz serwerów i baz danych,
+- dodano odwrotne DNS i rozpoznawanie nazw urządzeń,
+- dodano szacowanie typu urządzenia i poziomu ekspozycji,
+- rozszerzono informacje o usługach: opis, kategoria i typowe szyfrowanie,
+- dodano filtry urządzeń i bogatszy eksport CSV,
+- zmniejszono typografię, odstępy i rozmiary kart,
+- rozszerzono testy modeli, profili i walidacji portów.
+
+## 1.1
+
+- dodano moduł **My IP** z lokalnym IPv4 i opcjonalnym publicznym IPv4/IPv6,
+- dodano rozwiązywanie nazw DNS,
+- dodano **TCP Ping** z pomiarem czasu zestawienia połączenia,
+- dodano test pojedynczego portu dla adresu IP lub domeny,
+- dodano skaner portów **Nmap-style**,
+- dodano profile Popularne, WWW i IoT,
+- dodano własny zakres ograniczony do 256 portów,
+- dodano zatrzymywanie skanu i filtrowanie zamkniętych portów,
+- rozszerzono informacje o prywatności i ograniczeniach iOS,
+- dodano testy walidacji hostów i portów.
+
+## 1.0
+
+- skanowanie prywatnej podsieci IPv4 `/24`,
+- wykrywanie usług Bonjour,
+- widok urządzeń i popularnych usług TCP,
+- eksport wyników do CSV.
