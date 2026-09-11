@@ -413,6 +413,62 @@ enum ScanPhase: Equatable {
   }
 }
 
+enum ScanCompletion {
+  static let localNetworkDeniedMessage =
+    "Brak dostępu do sieci lokalnej. Włącz go w Ustawieniach iPhone’a: Prywatność i ochrona > Sieć lokalna."
+
+  static func phase(
+    deviceCount: Int,
+    completedProbes: Int,
+    deniedProbes: Int,
+    finishedAt: Date
+  ) -> ScanPhase {
+    if deviceCount == 0,
+      completedProbes > 0,
+      deniedProbes == completedProbes
+    {
+      return .failed(localNetworkDeniedMessage)
+    }
+    return .finished(finishedAt)
+  }
+}
+
+enum ScanStage: Int, CaseIterable, Identifiable, Sendable {
+  case network
+  case addressesAndPorts
+  case namesAndServices
+  case results
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .network: "Sieć"
+    case .addressesAndPorts: "IP i porty"
+    case .namesAndServices: "DNS i usługi"
+    case .results: "Wyniki"
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .network: "wifi"
+    case .addressesAndPorts: "number"
+    case .namesAndServices: "network"
+    case .results: "checkmark"
+    }
+  }
+
+  var progress: Double {
+    switch self {
+    case .network: 0.1
+    case .addressesAndPorts: 0.55
+    case .namesAndServices: 0.85
+    case .results: 1
+    }
+  }
+}
+
 enum PortCatalog {
   static func name(for port: UInt16) -> String {
     info(for: port).name

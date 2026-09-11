@@ -10,6 +10,68 @@ struct ISHTarget: Identifiable, Hashable, Sendable {
   var id: String { address }
 }
 
+enum NmapGuideStep: Int, CaseIterable, Identifiable, Sendable {
+  case discovery
+  case names
+  case commonPorts
+  case services
+  case detailed
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .discovery: "Wykrywanie urządzeń"
+    case .names: "Nazwy urządzeń"
+    case .commonPorts: "Najważniejsze porty"
+    case .services: "Rozpoznawanie usług"
+    case .detailed: "Dokładna analiza urządzenia"
+    }
+  }
+
+  var subtitle: String {
+    switch self {
+    case .discovery: "Sprawdza, które urządzenia odpowiadają w prywatnej sieci."
+    case .names: "Próbuje ustalić nazwy DNS i rodzaj wykrytych urządzeń."
+    case .commonPorts: "Sprawdza WWW, SSH, drukarki, multimedia i udostępnianie plików."
+    case .services: "Rozpoznaje usługi oraz ich podstawowe informacje."
+    case .detailed: "Rozszerza analizę jednego wybranego urządzenia."
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .discovery: "dot.radiowaves.left.and.right"
+    case .names: "textformat.abc"
+    case .commonPorts: "door.left.hand.open"
+    case .services: "server.rack"
+    case .detailed: "magnifyingglass.circle"
+    }
+  }
+
+  var mode: ISHScanMode {
+    switch self {
+    case .discovery, .names, .commonPorts: .inventory
+    case .services: .serviceDetails
+    case .detailed: .extended
+    }
+  }
+
+  var shortcutID: SSHShortcutID {
+    switch self {
+    case .discovery: .discoverHosts
+    case .names: .reverseDNS
+    case .commonPorts: .commonPorts
+    case .services: .serviceVersions
+    case .detailed: .detailedHost
+    }
+  }
+
+  func isAvailable(hasDevices: Bool, completedSteps: Int) -> Bool {
+    hasDevices && rawValue <= completedSteps
+  }
+}
+
 enum ISHScanMode: String, CaseIterable, Identifiable, Sendable {
   case inventory
   case extended

@@ -145,6 +145,45 @@ final class NetScopeTests: XCTestCase {
     XCTAssertEqual(details.duration, 5, accuracy: 0.01)
   }
 
+  func testScanCompletionReportsLocalNetworkDenial() {
+    let phase = ScanCompletion.phase(
+      deviceCount: 0,
+      completedProbes: 120,
+      deniedProbes: 120,
+      finishedAt: Date(timeIntervalSince1970: 10)
+    )
+
+    XCTAssertEqual(
+      phase,
+      .failed(
+        "Brak dostępu do sieci lokalnej. Włącz go w Ustawieniach iPhone’a: Prywatność i ochrona > Sieć lokalna."
+      )
+    )
+  }
+
+  func testScanCompletionKeepsValidEmptyResult() {
+    let finishedAt = Date(timeIntervalSince1970: 20)
+
+    XCTAssertEqual(
+      ScanCompletion.phase(
+        deviceCount: 0,
+        completedProbes: 120,
+        deniedProbes: 0,
+        finishedAt: finishedAt
+      ),
+      .finished(finishedAt)
+    )
+  }
+
+  func testScanStagesHaveStableUserFacingOrder() {
+    XCTAssertEqual(
+      ScanStage.allCases.map(\.title),
+      ["Sieć", "IP i porty", "DNS i usługi", "Wyniki"]
+    )
+    XCTAssertEqual(ScanStage.network.progress, 0.1)
+    XCTAssertEqual(ScanStage.results.progress, 1)
+  }
+
   func testISHTargetValidation() {
     XCTAssertTrue(ISHTargetValidator.isPrivate("192.168.1.0/24"))
     XCTAssertTrue(ISHTargetValidator.isPrivate("172.20.4.5"))
@@ -165,6 +204,89 @@ final class NetScopeTests: XCTestCase {
     XCTAssertTrue(command.contains("-sV --version-light"))
     XCTAssertTrue(command.contains("'22,443'"))
     XCTAssertFalse(command.contains(" -A "))
+  }
+
+  func testNmapGuideUsesFiveOrderedAnalyses() {
+    XCTAssertEqual(
+      NmapGuideStep.allCases.map(\.title),
+      [
+        "Wykrywanie urządzeń",
+        "Nazwy urządzeń",
+        "Najważniejsze porty",
+        "Rozpoznawanie usług",
+        "Dokładna analiza urządzenia",
+      ]
+    )
+    XCTAssertTrue(NmapGuideStep.discovery.isAvailable(hasDevices: true, completedSteps: 0))
+    XCTAssertFalse(NmapGuideStep.names.isAvailable(hasDevices: true, completedSteps: 0))
+    XCTAssertTrue(NmapGuideStep.names.isAvailable(hasDevices: true, completedSteps: 1))
+    XCTAssertFalse(NmapGuideStep.discovery.isAvailable(hasDevices: false, completedSteps: 5))
+  }
+
+  func testSSHShortcutCategoriesFollowWorkflowOrder() {
+    XCTAssertEqual(
+      SSHShortcutCategory.allCases.map(\.title),
+      [
+        "Połączenie z Maciem",
+        "Informacje o sieci",
+        "Wykrywanie urządzeń",
+        "DNS i nazwy",
+        "Porty i usługi",
+        "Raporty",
+      ]
+    )
+  }
+
+  func testSSHLoginRequiresUsernameAndHost() {
+    let result = SSHShortcutLibrary.resolve(
+      .connect,
+      context: SSHShortcutContext(username: "", host: "", target: nil)
+    )
+
+    XCTAssertEqual(result, .blocked("Uzupełnij użytkownika i host Maca."))
+  }
+
+  func testSSHConnectionRejectsShellMetacharacters() {
+    let result = SSHShortcutLibrary.resolve(
+      .connect,
+      context: SSHShortcutContext(username: "user;id", host: "mac.local", target: nil)
+    )
+
+    XCTAssertEqual(result, .blocked("Użytkownik lub host zawiera niedozwolone znaki."))
+  }
+
+  func testSSHDiscoveryRejectsPublicTarget() {
+    let result = SSHShortcutLibrary.resolve(
+      .discoverHosts,
+      context: SSHShortcutContext(
+        username: "krystian",
+        host: "mac.local",
+        target: "8.8.8.8"
+      )
+    )
+
+    XCTAssertEqual(result, .blocked("Wybierz prywatny adres lub podsieć."))
+  }
+
+  func testSSHShortcutSearchMatchesTitleSummaryAndCategory() {
+    let all = SSHShortcutLibrary.shortcuts
+
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, query: "DNS").map(\.id),
+      [.dnsServers, .reverseDNS]
+    )
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, query: "raport").map(\.category),
+      [.reports, .reports]
+    )
+    XCTAssertEqual(SSHShortcutSearch.filter(all, query: "").count, all.count)
+  }
+
+  func testNmapStepsMapToOrderedSSHShortcuts() {
+    XCTAssertEqual(
+      NmapGuideStep.allCases.map(\.shortcutID),
+      [.discoverHosts, .reverseDNS, .commonPorts, .serviceVersions, .detailedHost]
+    )
   }
 }
 

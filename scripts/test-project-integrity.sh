@@ -14,6 +14,12 @@ derived_data="$(mktemp -d /private/tmp/netscope-integrity.XXXXXX)"
 build_log="$derived_data/xcodebuild.log"
 trap 'rm -rf -- "$derived_data"' EXIT
 
+grep -q 'title: "iSH + Mac przez SSH"' "$repo_root/NetScope/DashboardView.swift"
+if grep -q 'Text("Szybkie działania")' "$repo_root/NetScope/DashboardView.swift"; then
+  print -u2 "Dashboard nadal dubluje dolną nawigację"
+  exit 1
+fi
+
 build_bundle() {
   xcodebuild \
     -project "$repo_root/NetScope.xcodeproj" \
@@ -76,5 +82,29 @@ assert_plist_value CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName AppIcon
   print -u2 "Brak skompilowanego katalogu zasobów Assets.car"
   exit 1
 }
+
+privacy_manifest="$app_bundle/PrivacyInfo.xcprivacy"
+[[ -f "$privacy_manifest" ]] || {
+  print -u2 "Brak PrivacyInfo.xcprivacy w bundle aplikacji"
+  exit 1
+}
+
+assert_privacy_value() {
+  local key="$1"
+  local expected="$2"
+  local actual
+
+  actual="$(plutil -extract "$key" raw -o - "$privacy_manifest")"
+  [[ "$actual" == "$expected" ]] || {
+    print -u2 "PrivacyInfo $key: oczekiwano '$expected', otrzymano '$actual'"
+    exit 1
+  }
+}
+
+assert_privacy_value NSPrivacyTracking false
+assert_privacy_value NSPrivacyAccessedAPITypes.0.NSPrivacyAccessedAPIType \
+  NSPrivacyAccessedAPICategoryUserDefaults
+assert_privacy_value NSPrivacyAccessedAPITypes.0.NSPrivacyAccessedAPITypeReasons.0 \
+  CA92.1
 
 print "Integralność bundle: OK"

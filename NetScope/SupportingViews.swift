@@ -23,9 +23,15 @@ struct DeviceRow: View {
           DeviceRegistryStatusBadge(status: registryStatus)
           ExposureBadge(level: device.exposure)
         }
-        Text("\(device.address) • \(device.openPorts.count) usług")
+        Text("IP: \(device.address)")
           .font(.caption2.monospaced())
           .foregroundStyle(.secondary)
+        if let hostname = device.hostname, hostname != device.address {
+          Text("DNS: \(hostname)")
+            .font(.caption2.monospaced())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
         Text(device.serviceSummary)
           .font(.caption2)
           .foregroundStyle(.secondary)
@@ -36,9 +42,16 @@ struct DeviceRow: View {
       Image(systemName: "chevron.right")
         .font(.caption2.weight(.bold))
         .foregroundStyle(.tertiary)
+        .accessibilityHidden(true)
     }
     .padding(10)
     .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      "\(device.displayName(using: record)), IP \(device.address), \(device.openPorts.count) usług"
+    )
+    .accessibilityHint("Otwiera szczegóły urządzenia")
   }
 }
 
@@ -144,9 +157,25 @@ struct DeviceDetailView: View {
   private var identitySection: some View {
     Section("Urządzenie") {
       if let hostname = device.hostname {
-        LabeledContent("Nazwa DNS", value: hostname)
+        NavigationLink {
+          HostAddressDetailView(
+            title: "Nazwa DNS",
+            host: hostname,
+            openPorts: device.openPorts
+          )
+        } label: {
+          LabeledContent("Nazwa DNS", value: hostname)
+        }
       }
-      LabeledContent("Adres IP", value: device.address)
+      NavigationLink {
+        HostAddressDetailView(
+          title: "Adres IP",
+          host: device.address,
+          openPorts: device.openPorts
+        )
+      } label: {
+        LabeledContent("Adres IP", value: device.address)
+      }
       LabeledContent("Rozpoznany typ", value: device.kind.title)
       LabeledContent(
         "Ostatnio widziane",
@@ -257,6 +286,62 @@ struct DeviceDetailView: View {
     guard let key else { return }
     knownDeviceStore.remove(key)
     customName = ""
+  }
+}
+
+private struct HostAddressDetailView: View {
+  let title: String
+  let host: String
+  let openPorts: [UInt16]
+
+  var body: some View {
+    List {
+      Section(title) {
+        Text(host)
+          .font(.body.monospaced())
+          .textSelection(.enabled)
+        ShareLink(item: host) {
+          Label("Udostępnij lub kopiuj", systemImage: "square.and.arrow.up")
+        }
+      }
+
+      if !webLinks.isEmpty {
+        Section("Dostępne strony") {
+          ForEach(webLinks, id: \.absoluteString) { url in
+            Link(destination: url) {
+              Label {
+                HStack {
+                  Text("Otwórz \(url.scheme?.uppercased() ?? "stronę")")
+                  Spacer()
+                  Image(systemName: "arrow.up.right")
+                    .foregroundStyle(.secondary)
+                }
+              } icon: {
+                Image(systemName: url.scheme == "https" ? "lock.fill" : "globe")
+              }
+            }
+          }
+        }
+      } else {
+        Section("Dostępne strony") {
+          Text("Nie wykryto portu HTTP ani HTTPS dla tego urządzenia.")
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+    .navigationTitle(title)
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var webLinks: [URL] {
+    var links: [URL] = []
+    if openPorts.contains(443), let url = URL(string: "https://\(host)") {
+      links.append(url)
+    }
+    if openPorts.contains(80), let url = URL(string: "http://\(host)") {
+      links.append(url)
+    }
+    return links
   }
 }
 

@@ -10,6 +10,7 @@ final class NetworkScanner: ObservableObject {
   @Published private(set) var history: [ScanSummary] = []
   @Published private(set) var sessionDetails: ScanSessionDetails?
   @Published private(set) var newDeviceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var stage: ScanStage = .network
   let bonjourDiscovery = BonjourDiscovery()
   let knownDeviceStore: KnownDeviceStore
 
@@ -35,6 +36,7 @@ final class NetworkScanner: ObservableObject {
     cancellationRequested = false
     newDeviceKeys = []
     devices = []
+    stage = .network
     phase = .preparing
     let startedAt = Date()
 
@@ -48,6 +50,7 @@ final class NetworkScanner: ObservableObject {
     }
 
     self.context = context
+    stage = .addressesAndPorts
     bonjourDiscovery.start()
 
     let hosts = context.hostsInLocal24
@@ -101,15 +104,27 @@ final class NetworkScanner: ObservableObject {
     }
 
     bonjourDiscovery.stop()
+    stage = .namesAndServices
     let finishedAt = Date()
     finishSession(at: finishedAt)
+    let completionPhase = ScanCompletion.phase(
+      deviceCount: devices.count,
+      completedProbes: completed * ports.count,
+      deniedProbes: deniedProbes,
+      finishedAt: finishedAt
+    )
+    if case .failed = completionPhase {
+      phase = completionPhase
+      return
+    }
     completeRegistryMerge(
       devices: devices,
       networkID: context.scanRangeDescription,
       at: finishedAt
     )
     recordSummary(startedAt: startedAt, finishedAt: finishedAt)
-    phase = .finished(finishedAt)
+    stage = .results
+    phase = completionPhase
   }
 
   func cancel() {

@@ -120,55 +120,28 @@ struct DashboardView: View {
   }
 
   private var quickActions: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("Szybkie działania")
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-
-      HStack(spacing: 7) {
-        QuickActionButton(title: "Sieć", icon: "dot.radiowaves.left.and.right") {
-          selectedTab = .network
-        }
-        QuickActionButton(title: "Porty", icon: "shield.lefthalf.filled") {
-          selectedTab = .ports
-        }
-        QuickActionButton(title: "Ping", icon: "waveform.path.ecg") {
-          selectedTab = .diagnostics
-        }
-        QuickActionButton(title: "Bonjour", icon: "bonjour") {
-          selectedTab = .services
-        }
-      }
-
-      NavigationLink {
-        ISHToolkitView(
-          context: scanner.context,
-          devices: scanner.devices
-        )
-      } label: {
-        HStack(spacing: 9) {
-          Image(systemName: "terminal.fill")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.cyan)
-          VStack(alignment: .leading, spacing: 1) {
-            Text("Narzędzia dla iSH")
-              .font(.caption.weight(.semibold))
-            Text("Polecenia Nmap i eksport gotowego skryptu")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
+    NavigationLink {
+      SSHShortcutLibraryView(
+        context: scanner.context,
+        devices: scanner.devices,
+        preferredShortcut: nil
+      )
+    } label: {
+      ToolCard(
+        icon: "terminal.fill",
+        title: "iSH + Mac przez SSH",
+        subtitle: "Bezpieczne skróty do skopiowania na iPhonie"
+      ) {
+        HStack {
+          Text("Wymaga iSH oraz dostępu SSH do Twojego Maca")
           Spacer()
           Image(systemName: "chevron.right")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(.tertiary)
         }
-        .padding(9)
-        .background(.cyan.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+        .font(.caption)
+        .foregroundStyle(.secondary)
       }
-      .buttonStyle(.plain)
     }
-    .padding(11)
-    .background(.background, in: RoundedRectangle(cornerRadius: 14))
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder
@@ -186,6 +159,8 @@ struct DashboardView: View {
         .font(.caption.weight(.medium))
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
+          .accessibilityLabel("Postęp skanowania sieci")
+          .accessibilityValue("(completed) z (total) adresów")
       }
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 13))
@@ -227,26 +202,5 @@ struct DashboardView: View {
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 14))
     }
-  }
-}
-
-private struct QuickActionButton: View {
-  let title: String
-  let icon: String
-  let action: () -> Void
-
-  var body: some View {
-    Button(action: action) {
-      VStack(spacing: 5) {
-        Image(systemName: icon)
-          .font(.subheadline.weight(.semibold))
-        Text(title)
-          .font(.caption2)
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 8)
-    }
-    .buttonStyle(.bordered)
-    .tint(.cyan)
   }
 }

@@ -2,27 +2,141 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+struct NmapGuideView: View {
+  @ObservedObject var scanner: NetworkScanner
+  @AppStorage("NetScope.nmapCompletedSteps") private var completedSteps = 0
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        LazyVStack(spacing: 12) {
+          InfoBanner(
+            icon: "terminal.fill",
+            title: "Nmap krok po kroku",
+            message: "Najpierw wykryj urządzenia w NetScope. Potem przechodź przez analizy po kolei; komendy pozostają ukryte, dopóki ich nie otworzysz."
+          )
+
+          if scanner.devices.isEmpty {
+            ContentUnavailableView(
+              "Najpierw wykonaj skan",
+              systemImage: "dot.radiowaves.left.and.right",
+              description: Text("Etapy Nmap odblokują się po wykryciu urządzeń w prywatnej sieci.")
+            )
+            .frame(minHeight: 190)
+          }
+
+          ForEach(NmapGuideStep.allCases) { step in
+            stepCard(step)
+          }
+
+          plannedTools
+          InfoBanner(
+            icon: "hand.raised.fill",
+            title: "Tylko własna sieć",
+            message: "Nmap i przyszłe narzędzia Kali używaj wyłącznie w swojej sieci lub za zgodą właściciela."
+          )
+        }
+        .padding(12)
+      }
+      .background(Color(.systemGroupedBackground))
+      .navigationTitle("Nmap")
+      .navigationBarTitleDisplayMode(.inline)
+    }
+  }
+
+  @ViewBuilder
+  private func stepCard(_ step: NmapGuideStep) -> some View {
+    let available = step.isAvailable(
+      hasDevices: !scanner.devices.isEmpty,
+      completedSteps: completedSteps
+    )
+    Group {
+      if available {
+        NavigationLink {
+          SSHShortcutLibraryView(
+            context: scanner.context,
+            devices: scanner.devices,
+            preferredShortcut: step.shortcutID
+          )
+        } label: {
+          stepLabel(step, available: true)
+        }
+        .buttonStyle(.plain)
+      } else {
+        stepLabel(step, available: false)
+      }
+    }
+  }
+
+  private func stepLabel(_ step: NmapGuideStep, available: Bool) -> some View {
+    HStack(spacing: 11) {
+      ZStack {
+        Circle().fill(step.rawValue < completedSteps ? Color.green.opacity(0.14) : Color.cyan.opacity(0.1))
+        Image(systemName: step.rawValue < completedSteps ? "checkmark" : step.icon)
+          .foregroundStyle(step.rawValue < completedSteps ? .green : (available ? .cyan : .secondary))
+      }
+      .frame(width: 38, height: 38)
+
+      VStack(alignment: .leading, spacing: 3) {
+        Text("\(step.rawValue + 1). \(step.title)").font(.subheadline.weight(.semibold))
+        Text(step.subtitle).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+      }
+      Spacer(minLength: 4)
+      Image(systemName: available ? "chevron.right" : "lock.fill")
+        .font(.caption.weight(.bold)).foregroundStyle(.tertiary)
+    }
+    .padding(11)
+    .background(.background, in: RoundedRectangle(cornerRadius: 14))
+    .opacity(available ? 1 : 0.65)
+  }
+
+  private var plannedTools: some View {
+    ToolCard(
+      icon: "shippingbox.fill",
+      title: "Kali Linux — kolejne moduły",
+      subtitle: "Planowane po podłączeniu konkretnej maszyny lub VM"
+    ) {
+      VStack(alignment: .leading, spacing: 7) {
+        ForEach([
+          "ARP i pełna inwentaryzacja", "DNS i domeny lokalne", "WWW, TLS i SMB",
+          "SNMP i ruch sieciowy", "Nuclei, GVM i raport porównawczy",
+        ], id: \.self) { item in
+          Label(item, systemImage: "clock.badge")
+            .font(.caption).foregroundStyle(.secondary)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+  }
+}
+
 struct ISHToolkitView: View {
   let context: NetworkContext?
   let devices: [NetworkDevice]
+  let preferredStep: NmapGuideStep?
   @State private var selectedAddress: String
-  @State private var mode: ISHScanMode = .inventory
+  @State private var mode: ISHScanMode
   @State private var isExporting = false
   @State private var copiedLabel: String?
+  @State private var showTechnicalDetails = false
+  @AppStorage("NetScope.nmapCompletedSteps") private var completedSteps = 0
 
   init(
     context: NetworkContext?,
     devices: [NetworkDevice],
-    preferredAddress: String? = nil
+    preferredAddress: String? = nil,
+    preferredStep: NmapGuideStep? = nil
   ) {
     self.context = context
     self.devices = devices
+    self.preferredStep = preferredStep
     let initialAddress =
       preferredAddress
       ?? context?.scanRangeDescription
       ?? devices.first?.address
       ?? ""
     _selectedAddress = State(initialValue: initialAddress)
+    _mode = State(initialValue: preferredStep?.mode ?? .inventory)
   }
 
   private var targets: [ISHTarget] {
@@ -80,16 +194,27 @@ struct ISHToolkitView: View {
           )
           .frame(minHeight: 220)
         } else {
+          if let preferredStep {
+            analysisCard(preferredStep)
+          }
           configuration
-          installCard
-          commandCard
-          exportCard
+          DisclosureGroup("Pokaż szczegóły techniczne", isExpanded: $showTechnicalDetails) {
+            VStack(spacing: 12) {
+              installCard
+              commandCard
+              exportCard
+            }
+            .padding(.top, 10)
+          }
+          .font(.caption.weight(.semibold))
+          .padding(11)
+          .background(.background, in: RoundedRectangle(cornerRadius: 14))
         }
       }
       .padding(12)
     }
     .background(Color(.systemGroupedBackground))
-    .navigationTitle("Narzędzia iSH")
+    .navigationTitle(preferredStep?.title ?? "Narzędzia iSH")
     .navigationBarTitleDisplayMode(.inline)
     .fileExporter(
       isPresented: $isExporting,
@@ -97,6 +222,22 @@ struct ISHToolkitView: View {
       contentType: .shellScript,
       defaultFilename: "netscope-ish.sh"
     ) { _ in }
+  }
+
+  private func analysisCard(_ step: NmapGuideStep) -> some View {
+    ToolCard(icon: step.icon, title: step.title, subtitle: step.subtitle) {
+      Button {
+        completedSteps = max(completedSteps, step.rawValue + 1)
+      } label: {
+        Label(
+          completedSteps > step.rawValue ? "Etap wykonany" : "Oznacz jako wykonany",
+          systemImage: completedSteps > step.rawValue ? "checkmark.circle.fill" : "circle"
+        )
+        .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.borderedProminent)
+      .tint(completedSteps > step.rawValue ? .green : .cyan)
+    }
   }
 
   private var intro: some View {

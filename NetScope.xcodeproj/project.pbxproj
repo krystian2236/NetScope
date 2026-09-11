@@ -27,6 +27,9 @@
 		E00000000000000000000017 /* ISHToolkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001A /* ISHToolkitView.swift */; };
 		E00000000000000000000018 /* ScanDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001B /* ScanDetailsView.swift */; };
 		E00000000000000000000019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000D /* Assets.xcassets */; };
+		E00000000000000000000020 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001C /* PrivacyInfo.xcprivacy */; };
+		E00000000000000000000021 /* SSHShortcutLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001D /* SSHShortcutLibrary.swift */; };
+		E00000000000000000000022 /* SSHShortcutLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001E /* SSHShortcutLibraryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +66,9 @@
 		F00000000000000000000019 /* ISHToolkit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISHToolkit.swift; sourceTree = "<group>"; };
 		F0000000000000000000001A /* ISHToolkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISHToolkitView.swift; sourceTree = "<group>"; };
 		F0000000000000000000001B /* ScanDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDetailsView.swift; sourceTree = "<group>"; };
+		F0000000000000000000001C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F0000000000000000000001D /* SSHShortcutLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHShortcutLibrary.swift; sourceTree = "<group>"; };
+		F0000000000000000000001E /* SSHShortcutLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHShortcutLibraryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,10 +116,13 @@
 				F00000000000000000000018 /* UIComponents.swift */,
 				F00000000000000000000019 /* ISHToolkit.swift */,
 				F0000000000000000000001A /* ISHToolkitView.swift */,
+				F0000000000000000000001D /* SSHShortcutLibrary.swift */,
+				F0000000000000000000001E /* SSHShortcutLibraryView.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
 				F00000000000000000000009 /* Info.plist */,
+				F0000000000000000000001C /* PrivacyInfo.xcprivacy */,
 				F0000000000000000000000D /* Assets.xcassets */,
 			);
 			path = NetScope;
@@ -218,6 +227,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E00000000000000000000019 /* Assets.xcassets in Resources */,
+				E00000000000000000000020 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +259,8 @@
 				E00000000000000000000015 /* UIComponents.swift in Sources */,
 				E00000000000000000000016 /* ISHToolkit.swift in Sources */,
 				E00000000000000000000017 /* ISHToolkitView.swift in Sources */,
+				E00000000000000000000021 /* SSHShortcutLibrary.swift in Sources */,
+				E00000000000000000000022 /* SSHShortcutLibraryView.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,

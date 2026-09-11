@@ -25,6 +25,7 @@ struct ScannerView: View {
       ScrollView {
         LazyVStack(spacing: 12) {
           NetworkHeaderCard(context: scanner.context)
+          ScanWorkflowView(current: scanner.stage, phase: scanner.phase)
           ScanControlCard(
             profile: $scanner.profile,
             isScanning: scanner.phase.isScanning,
@@ -54,7 +55,7 @@ struct ScannerView: View {
           }
           DeviceResultsSection(
             devices: filteredDevices,
-            isScanning: scanner.phase.isScanning,
+            phase: scanner.phase,
             hasScanResults: !scanner.devices.isEmpty,
             networkID: scanner.networkID,
             newDeviceKeys: scanner.newDeviceKeys,
@@ -128,6 +129,86 @@ struct ScannerView: View {
       record: record,
       isNew: scanner.newDeviceKeys.contains(key)
     )
+  }
+}
+
+private struct ScanWorkflowView: View {
+  let current: ScanStage
+  let phase: ScanPhase
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text("Przebieg skanu")
+          .font(.caption.weight(.semibold))
+        Spacer()
+        Text(current.title)
+          .font(.caption2.weight(.medium))
+          .foregroundStyle(.secondary)
+      }
+
+      HStack(alignment: .top, spacing: 4) {
+        ForEach(Array(ScanStage.allCases.enumerated()), id: \.element.id) { index, stage in
+          VStack(spacing: 5) {
+            Image(systemName: symbol(for: stage))
+              .font(.caption2.weight(.bold))
+              .foregroundStyle(color(for: stage))
+              .frame(width: 26, height: 26)
+              .background(color(for: stage).opacity(0.12), in: Circle())
+            Text(stage.title)
+              .font(.caption2)
+              .multilineTextAlignment(.center)
+              .foregroundStyle(stage.rawValue <= current.rawValue ? .primary : .secondary)
+              .lineLimit(2)
+              .minimumScaleFactor(0.8)
+          }
+          .frame(maxWidth: .infinity)
+
+          if index < ScanStage.allCases.count - 1 {
+            Capsule()
+              .fill(stage.rawValue < current.rawValue ? Color.green : Color.secondary.opacity(0.2))
+              .frame(height: 2)
+              .padding(.top, 12)
+          }
+        }
+      }
+
+      ProgressView(value: displayedProgress)
+        .tint(.cyan)
+        .accessibilityLabel("Przebieg skanu")
+        .accessibilityValue(current.title)
+    }
+    .padding(11)
+    .background(.background, in: RoundedRectangle(cornerRadius: 14))
+  }
+
+  private var displayedProgress: Double {
+    switch phase {
+    case .idle: 0
+    case .failed, .cancelled: current.progress
+    default: current.progress
+    }
+  }
+
+  private func symbol(for stage: ScanStage) -> String {
+    if isComplete(stage) { return "checkmark" }
+    return stage.icon
+  }
+
+  private func color(for stage: ScanStage) -> Color {
+    if isComplete(stage) { return .green }
+    if stage == current, phase != .idle { return .cyan }
+    return .secondary
+  }
+
+  private func isComplete(_ stage: ScanStage) -> Bool {
+    stage.rawValue < current.rawValue
+      || (stage == .results && current == .results && scanFinished)
+  }
+
+  private var scanFinished: Bool {
+    if case .finished = phase { return true }
+    return false
   }
 }
 
@@ -285,6 +366,7 @@ private struct ScanStatusView: View {
       ProgressView("Sprawdzanie Wi‑Fi…")
         .font(.caption)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Sprawdzanie połączenia Wi‑Fi")
     case .scanning(let completed, let total):
       VStack(alignment: .leading, spacing: 7) {
         HStack {
@@ -296,6 +378,8 @@ private struct ScanStatusView: View {
         .font(.caption.weight(.medium))
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
+          .accessibilityLabel("Postęp skanowania")
+          .accessibilityValue("(completed) z (total) adresów")
       }
     case .finished(let date):
       InfoBanner(
@@ -366,7 +450,7 @@ private struct DeviceFilterBar: View {
 
 private struct DeviceResultsSection: View {
   let devices: [NetworkDevice]
-  let isScanning: Bool
+  let phase: ScanPhase
   let hasScanResults: Bool
   let networkID: String?
   let newDeviceKeys: Set<KnownDeviceKey>
@@ -377,8 +461,8 @@ private struct DeviceResultsSection: View {
   var body: some View {
     if devices.isEmpty {
       ContentUnavailableView(
-        isScanning ? "Szukam urządzeń…" : "Brak wyników",
-        systemImage: "network.slash",
+        emptyTitle,
+        systemImage: emptyIcon,
         description: Text(description)
       )
       .frame(minHeight: 180)
@@ -406,13 +490,41 @@ private struct DeviceResultsSection: View {
   }
 
   private var description: String {
-    if isScanning {
+    if phase.isScanning {
       return "Wyniki pojawią się tutaj w trakcie skanowania."
     }
     if hasScanResults {
       return "Żadne urządzenie nie pasuje do wybranego filtra."
     }
-    return "Uruchom skan, aby znaleźć urządzenia i dostępne usługi."
+    switch phase {
+    case .finished:
+      return "Skan zakończony. Spróbuj profilu Standard albo sprawdź, czy urządzenia są w tej samej sieci Wi‑Fi."
+    case .cancelled:
+      return "Skan został zatrzymany przed wykryciem urządzeń."
+    case .failed(let message):
+      return message
+    default:
+      return "Uruchom skan, aby znaleźć urządzenia i dostępne usługi."
+    }
+  }
+
+  private var emptyTitle: String {
+    if phase.isScanning { return "Szukam urządzeń…" }
+    if hasScanResults { return "Brak pasujących wyników" }
+    switch phase {
+    case .finished: return "Nie znaleziono urządzeń"
+    case .cancelled: return "Skan zatrzymany"
+    case .failed: return "Skan niedostępny"
+    default: return "Brak wyników"
+    }
+  }
+
+  private var emptyIcon: String {
+    switch phase {
+    case .scanning, .preparing: "dot.radiowaves.left.and.right"
+    case .failed: "exclamationmark.triangle"
+    default: "network.slash"
+    }
   }
 
   private func key(for device: NetworkDevice) -> KnownDeviceKey? {

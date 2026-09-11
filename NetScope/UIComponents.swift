@@ -73,6 +73,9 @@ struct MetricCard: View {
     }
     .padding(10)
     .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(title)
+    .accessibilityValue(value)
   }
 }
 
