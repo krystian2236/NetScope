@@ -89,7 +89,7 @@ enum SSHShortcutLibrary {
     case .discoverHosts:
       return targetCommand(context) { "nmap -sn \($0)" }
     case .reverseDNS:
-      return targetCommand(context) { "dscacheutil -q host -a ip_address \($0)" }
+      return hostOnlyTargetCommand(context) { "dscacheutil -q host -a ip_address \($0)" }
     case .commonPorts:
       return targetCommand(context) {
         "nmap --unprivileged -sT -Pn --open -p '\(commonPortList)' \($0)"
@@ -107,6 +107,15 @@ enum SSHShortcutLibrary {
     case .listReports:
       return .command("find \"$HOME/Documents/NetScope\" -maxdepth 1 -type f -print")
     }
+  }
+
+  static func connectionURL(context: SSHShortcutContext) -> URL? {
+    guard case .command = connection(context) else { return nil }
+    var components = URLComponents()
+    components.scheme = "ssh"
+    components.user = context.username
+    components.host = context.host
+    return components.url
   }
 
   private static func connection(_ context: SSHShortcutContext) -> SSHShortcutResolution {
@@ -127,6 +136,16 @@ enum SSHShortcutLibrary {
   ) -> SSHShortcutResolution {
     guard let target = context.target, ISHTargetValidator.isPrivate(target) else {
       return .blocked("Wybierz prywatny adres lub podsieć.")
+    }
+    return .command(build(shellQuoted(target)))
+  }
+
+  private static func hostOnlyTargetCommand(
+    _ context: SSHShortcutContext,
+    build: (String) -> String
+  ) -> SSHShortcutResolution {
+    guard let target = context.target, ISHTargetValidator.isPrivateHost(target) else {
+      return .blocked("Wybierz pojedynczy prywatny adres (bez podsieci).")
     }
     return .command(build(shellQuoted(target)))
   }

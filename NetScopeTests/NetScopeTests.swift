@@ -3,6 +3,118 @@ import Testing
 
 @testable import NetScope
 
+@Suite("Session restoration")
+struct SessionRestorationTests {
+  @Test("Unknown tab falls back to dashboard")
+  func unknownTabFallsBackToDashboard() {
+    #expect(AppTab.restored(from: 999) == .dashboard)
+  }
+
+  @Test("Primary navigation keeps Toolbox in the center")
+  func primaryNavigationKeepsToolboxInTheCenter() {
+    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon])
+    #expect(AppTab.restored(from: 1) == .dashboard)
+    #expect(AppTab.restored(from: 2) == .dashboard)
+    #expect(AppTab.restored(from: 4) == .dashboard)
+  }
+
+  @Test("Shortcut route restores the selected command")
+  func shortcutRouteRestoresSelectedCommand() {
+    #expect(ISHWorkspaceRoute(rawValue: SSHShortcutID.commonPorts.rawValue)?.shortcutID == .commonPorts)
+    #expect(ISHWorkspaceRoute(rawValue: ISHWorkspaceRoute.library.rawValue) == .library)
+  }
+}
+
+@Suite("Toolbox workflow")
+struct ToolboxWorkflowTests {
+  private let webDevice = NetworkDevice(
+    address: "192.168.1.20",
+    hostname: "server.local",
+    openPorts: [22, 80, 443],
+    lastSeen: Date()
+  )
+
+  @Test("Stages keep the defensive workflow order")
+  func stagesKeepDefensiveWorkflowOrder() {
+    #expect(ToolboxStage.allCases.map(\.title) == ["Discover", "Inspect", "Verify"])
+  }
+
+  @Test("Discovery requires a private network context")
+  func discoveryRequiresNetworkContext() {
+    #expect(ToolboxAvailability.evaluate(tool: .nativeDiscovery, device: nil, hasNetwork: true).isAvailable)
+    #expect(!ToolboxAvailability.evaluate(tool: .nativeDiscovery, device: nil, hasNetwork: false).isAvailable)
+  }
+
+  @Test("Host inspection requires a selected device")
+  func hostInspectionRequiresSelectedDevice() {
+    #expect(ToolboxAvailability.evaluate(tool: .nmapCommonPorts, device: webDevice, hasNetwork: true).isAvailable)
+    #expect(!ToolboxAvailability.evaluate(tool: .nmapCommonPorts, device: nil, hasNetwork: true).isAvailable)
+  }
+
+  @Test("Service tools use ports from only the selected device")
+  func serviceToolsUseSelectedDevicePorts() {
+    #expect(ToolboxAvailability.evaluate(tool: .whatWeb, device: webDevice, hasNetwork: true).isAvailable)
+    #expect(ToolboxAvailability.evaluate(tool: .sslScan, device: webDevice, hasNetwork: true).isAvailable)
+    #expect(!ToolboxAvailability.evaluate(tool: .enum4Linux, device: webDevice, hasNetwork: true).isAvailable)
+
+    let smbDevice = NetworkDevice(
+      address: "192.168.1.30",
+      hostname: nil,
+      openPorts: [445],
+      lastSeen: Date()
+    )
+    #expect(ToolboxAvailability.evaluate(tool: .enum4Linux, device: smbDevice, hasNetwork: true).isAvailable)
+    #expect(!ToolboxAvailability.evaluate(tool: .whatWeb, device: smbDevice, hasNetwork: true).isAvailable)
+  }
+
+  @Test("Nmap builder places choices in their command slots")
+  func nmapBuilderPlacesChoicesInCommandSlots() {
+    let draft = NmapCommandDraft(
+      scanType: .tcpConnect,
+      options: [.skipDiscovery, .openOnly, .serviceDetection],
+      ports: "22,80",
+      target: "192.168.1.20"
+    )
+
+    #expect(
+      draft.command
+        == "nmap -sT -Pn --open -sV -p '22,80' '192.168.1.20'"
+    )
+    #expect(draft.explanation.contains("TCP Connect"))
+    #expect(draft.explanation.contains("porty 22,80"))
+  }
+
+  @Test("Nmap builder blocks incomplete or unsafe targets")
+  func nmapBuilderBlocksIncompleteOrUnsafeTargets() {
+    #expect(NmapCommandDraft(target: "").command == nil)
+    #expect(NmapCommandDraft(target: "8.8.8.8").command == nil)
+    #expect(NmapCommandDraft(target: "192.168.1.0/24").command != nil)
+  }
+
+  @Test("Nmap builder removes options incompatible with host discovery")
+  func nmapBuilderRemovesIncompatibleOptions() {
+    let draft = NmapCommandDraft(
+      scanType: .ping,
+      options: [.skipDiscovery, .openOnly, .serviceDetection, .reason, .noDNS],
+      ports: "22,80",
+      target: "192.168.1.0/24"
+    )
+
+    #expect(draft.command == "nmap -sn --reason -n '192.168.1.0/24'")
+    #expect(draft.ignoredOptions == [.skipDiscovery, .openOnly, .serviceDetection])
+  }
+
+  @Test("Privileged scan types remain educational but cannot be copied")
+  func privilegedScansCannotBeCopied() {
+    let draft = NmapCommandDraft(scanType: .syn, target: "192.168.1.20")
+
+    #expect(draft.command == nil)
+    #expect(draft.blockingReason?.contains("uprawnień") == true)
+    #expect(!NmapScanType.syn.isCopyable)
+    #expect(!NmapScanType.udp.isCopyable)
+  }
+}
+
 final class NetScopeTests: XCTestCase {
   func testPrivateNetworkRecognition() {
     XCTAssertTrue(
@@ -191,6 +303,32 @@ final class NetScopeTests: XCTestCase {
     XCTAssertFalse(ISHTargetValidator.isPrivate("example.com"))
   }
 
+  func testISHTargetValidationRejectsCIDRPrefixesShorterThanPrivateBlock() {
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/7"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("10.0.0.0/8"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("172.16.0.0/11"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("172.16.0.0/12"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("192.168.0.0/15"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("192.168.0.0/16"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("169.254.0.0/15"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("169.254.0.0/16"))
+  }
+
+  func testISHTargetValidationRejectsMalformedCIDRSuffixes() {
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/33"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/999"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/abc"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/8/16"))
+  }
+
+  func testISHTargetValidationHostOnlyRejectsCIDR() {
+    XCTAssertTrue(ISHTargetValidator.isPrivateHost("192.168.1.20"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("192.168.1.20/24"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("192.168.1.0/24"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("8.8.8.8"))
+  }
+
   func testISHCommandUsesUnprivilegedConnectScan() {
     let command = ISHCommandBuilder.command(
       target: "192.168.1.40",
@@ -255,6 +393,14 @@ final class NetScopeTests: XCTestCase {
     XCTAssertEqual(result, .blocked("Użytkownik lub host zawiera niedozwolone znaki."))
   }
 
+  func testSSHConnectionBuildsStandardURLForExternalClient() {
+    let result = SSHShortcutLibrary.connectionURL(
+      context: SSHShortcutContext(username: "krystian", host: "MacBook.local", target: nil)
+    )
+
+    XCTAssertEqual(result, URL(string: "ssh://krystian@MacBook.local"))
+  }
+
   func testSSHDiscoveryRejectsPublicTarget() {
     let result = SSHShortcutLibrary.resolve(
       .discoverHosts,
@@ -282,11 +428,50 @@ final class NetScopeTests: XCTestCase {
     XCTAssertEqual(SSHShortcutSearch.filter(all, query: "").count, all.count)
   }
 
+  func testSSHShortcutSearchLimitsResultsToSelectedCategory() {
+    let all = SSHShortcutLibrary.shortcuts
+
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, category: .ports, query: "").map(\.id),
+      [.commonPorts, .serviceVersions, .detailedHost]
+    )
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, category: .networkInfo, query: "DNS").map(\.id),
+      [.dnsServers]
+    )
+  }
+
   func testNmapStepsMapToOrderedSSHShortcuts() {
     XCTAssertEqual(
       NmapGuideStep.allCases.map(\.shortcutID),
       [.discoverHosts, .reverseDNS, .commonPorts, .serviceVersions, .detailedHost]
     )
+  }
+
+  func testSSHReverseDNSRejectsSubnetTarget() {
+    let result = SSHShortcutLibrary.resolve(
+      .reverseDNS,
+      context: SSHShortcutContext(
+        username: "krystian",
+        host: "mac.local",
+        target: "192.168.1.0/24"
+      )
+    )
+
+    XCTAssertEqual(result, .blocked("Wybierz pojedynczy prywatny adres (bez podsieci)."))
+  }
+
+  func testSSHReverseDNSAcceptsSingleHostTarget() {
+    let result = SSHShortcutLibrary.resolve(
+      .reverseDNS,
+      context: SSHShortcutContext(
+        username: "krystian",
+        host: "mac.local",
+        target: "192.168.1.20"
+      )
+    )
+
+    XCTAssertEqual(result, .command("dscacheutil -q host -a ip_address '192.168.1.20'"))
   }
 }
 

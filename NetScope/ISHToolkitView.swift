@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct NmapGuideView: View {
   @ObservedObject var scanner: NetworkScanner
+  @Binding var workspaceRouteRaw: String
   @AppStorage("NetScope.nmapCompletedSteps") private var completedSteps = 0
 
   var body: some View {
@@ -41,7 +42,21 @@ struct NmapGuideView: View {
       .background(Color(.systemGroupedBackground))
       .navigationTitle("Nmap")
       .navigationBarTitleDisplayMode(.inline)
+      .navigationDestination(isPresented: workspaceIsPresented) {
+        SSHShortcutLibraryView(
+          context: scanner.context,
+          devices: scanner.devices,
+          preferredShortcut: ISHWorkspaceRoute(rawValue: workspaceRouteRaw)?.shortcutID
+        )
+      }
     }
+  }
+
+  private var workspaceIsPresented: Binding<Bool> {
+    Binding(
+      get: { ISHWorkspaceRoute(rawValue: workspaceRouteRaw) != nil },
+      set: { if !$0 { workspaceRouteRaw = "" } }
+    )
   }
 
   @ViewBuilder
@@ -52,12 +67,8 @@ struct NmapGuideView: View {
     )
     Group {
       if available {
-        NavigationLink {
-          SSHShortcutLibraryView(
-            context: scanner.context,
-            devices: scanner.devices,
-            preferredShortcut: step.shortcutID
-          )
+        Button {
+          workspaceRouteRaw = ISHWorkspaceRoute.shortcut(step.shortcutID).rawValue
         } label: {
           stepLabel(step, available: true)
         }
