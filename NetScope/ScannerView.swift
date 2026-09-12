@@ -3,18 +3,28 @@ import SwiftUI
 struct ScannerView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
-  @ObservedObject var tools: NetworkToolsModel
+  @State private var searchText = ""
+  @State private var filter: DeviceFilter = .all
+  @State private var selectedDevice: NetworkDevice?
+  @State private var isExporting = false
+
+  private var filteredDevices: [NetworkDevice] {
+    scanner.devices.filter { device in
+      let record = savedRecord(for: device)
+      let status = registryStatus(for: device, record: record)
+      return filter.matches(device, registryStatus: status)
+        && (searchText.isEmpty
+          || device.address.localizedCaseInsensitiveContains(searchText)
+          || device.displayName(using: record).localizedCaseInsensitiveContains(searchText)
+          || device.serviceSummary.localizedCaseInsensitiveContains(searchText))
+    }
+  }
 
   var body: some View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
           NetworkHeaderCard(context: scanner.context)
-          StartDestinations(
-            scanner: scanner,
-            knownDeviceStore: knownDeviceStore,
-            tools: tools
-          )
           ScanWorkflowView(current: scanner.stage, phase: scanner.phase)
           ScanControlCard(
             profile: $scanner.profile,
@@ -41,20 +51,52 @@ struct ScannerView: View {
           }
           if !scanner.devices.isEmpty {
             DeviceSummaryStrip(devices: scanner.devices)
-          } else if !scanner.phase.isScanning {
-            ContentUnavailableView(
-              "Brak wyników",
-              systemImage: "dot.radiowaves.left.and.right",
-              description: Text("Wybierz profil i rozpocznij skan prywatnej sieci.")
-            )
-            .frame(minHeight: 150)
+            DeviceFilterBar(selection: $filter)
           }
+          DeviceResultsSection(
+            devices: filteredDevices,
+            phase: scanner.phase,
+            hasScanResults: !scanner.devices.isEmpty,
+            networkID: scanner.networkID,
+            newDeviceKeys: scanner.newDeviceKeys,
+            knownDeviceStore: knownDeviceStore,
+            onSelect: selectDevice
+          )
         }
         .padding(12)
       }
       .background(Color(.systemGroupedBackground))
       .navigationTitle("Skan sieci")
       .navigationBarTitleDisplayMode(.inline)
+      .searchable(
+        text: $searchText,
+        placement: .navigationBarDrawer(displayMode: .automatic),
+        prompt: "IP, nazwa lub usługa"
+      )
+      .navigationDestination(item: $selectedDevice) { device in
+        DeviceDetailView(
+          device: device,
+          key: savedKey(for: device),
+          knownDeviceStore: knownDeviceStore
+        )
+      }
+      .toolbar {
+        if !scanner.devices.isEmpty {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button {
+              isExporting = true
+            } label: {
+              Label("Eksportuj", systemImage: "square.and.arrow.up")
+            }
+          }
+        }
+      }
+      .fileExporter(
+        isPresented: $isExporting,
+        document: ScanCSVDocument(devices: scanner.devices),
+        contentType: .commaSeparatedText,
+        defaultFilename: "NetScope-\(Date.now.formatted(.iso8601.year().month().day()))"
+      ) { _ in }
     }
   }
 
@@ -62,63 +104,31 @@ struct ScannerView: View {
     Task { await scanner.scan() }
   }
 
-}
-
-private struct StartDestinations: View {
-  @ObservedObject var scanner: NetworkScanner
-  @ObservedObject var knownDeviceStore: KnownDeviceStore
-  @ObservedObject var tools: NetworkToolsModel
-
-  var body: some View {
-    HStack(spacing: 10) {
-      destination(
-        title: "Urządzenia",
-        subtitle: scanner.devices.isEmpty ? "Po wykonaniu skanu" : "Wykryto: \(scanner.devices.count)",
-        icon: "desktopcomputer"
-      ) {
-        DevicesView(scanner: scanner, knownDeviceStore: knownDeviceStore)
-      }
-
-      destination(
-        title: "Usługi",
-        subtitle: "Porty, ping i Bonjour",
-        icon: "wrench.and.screwdriver"
-      ) {
-        ServicesHubView(scanner: scanner, tools: tools)
-      }
-    }
+  private func selectDevice(_ device: NetworkDevice) {
+    selectedDevice = device
   }
 
-  private func destination<Destination: View>(
-    title: String,
-    subtitle: String,
-    icon: String,
-    @ViewBuilder destination: () -> Destination
-  ) -> some View {
-    NavigationLink(destination: destination()) {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Image(systemName: icon)
-            .font(.headline)
-            .foregroundStyle(.cyan)
-          Spacer()
-          Image(systemName: "chevron.right")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(.secondary)
-        }
-        Text(title)
-          .font(.subheadline.weight(.semibold))
-        Text(subtitle)
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.8)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(12)
-      .background(.background, in: RoundedRectangle(cornerRadius: 14))
+  private func savedKey(for device: NetworkDevice) -> KnownDeviceKey? {
+    guard let networkID = scanner.networkID else { return nil }
+    return KnownDeviceKey(networkID: networkID, address: device.address)
+  }
+
+  private func savedRecord(for device: NetworkDevice) -> KnownDeviceRecord? {
+    guard let key = savedKey(for: device) else { return nil }
+    return knownDeviceStore.record(for: key)
+  }
+
+  private func registryStatus(
+    for device: NetworkDevice,
+    record: KnownDeviceRecord?
+  ) -> DeviceRegistryStatus {
+    guard let key = savedKey(for: device) else {
+      return .unknown
     }
-    .buttonStyle(.plain)
+    return DeviceRegistryStatus(
+      record: record,
+      isNew: scanner.newDeviceKeys.contains(key)
+    )
   }
 }
 

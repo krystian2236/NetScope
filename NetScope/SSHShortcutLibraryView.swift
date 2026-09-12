@@ -3,42 +3,28 @@ import UIKit
 
 enum SSHShortcutSearch {
   static func filter(_ shortcuts: [SSHShortcut], query: String) -> [SSHShortcut] {
-    filter(shortcuts, category: nil, query: query)
-  }
-
-  static func filter(
-    _ shortcuts: [SSHShortcut],
-    category: SSHShortcutCategory?,
-    query: String
-  ) -> [SSHShortcut] {
     let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    return shortcuts.filter { shortcut in
-      let matchesCategory = category == nil || shortcut.category == category
-      let matchesQuery = term.isEmpty
-        || shortcut.title.localizedCaseInsensitiveContains(term)
-        || shortcut.summary.localizedCaseInsensitiveContains(term)
-        || shortcut.category.title.localizedCaseInsensitiveContains(term)
-      return matchesCategory && matchesQuery
+    guard !term.isEmpty else { return shortcuts }
+    return shortcuts.filter {
+      $0.title.localizedCaseInsensitiveContains(term)
+        || $0.summary.localizedCaseInsensitiveContains(term)
+        || $0.category.title.localizedCaseInsensitiveContains(term)
     }
   }
 }
 
 struct SSHShortcutLibraryView: View {
-  @Environment(\.openURL) private var openURL
   let context: NetworkContext?
   let devices: [NetworkDevice]
   let preferredShortcut: SSHShortcutID?
 
-  @AppStorage("NetScope.sshProfileName") private var profileName = "Mój Mac"
   @AppStorage("NetScope.sshUsername") private var username = ""
   @AppStorage("NetScope.sshHost") private var host = ""
-  @SceneStorage("NetScope.sshTarget") private var target = ""
-  @SceneStorage("NetScope.sshQuery") private var query = ""
-  @SceneStorage("NetScope.sshCategory") private var selectedCategoryRaw = SSHShortcutCategory.connection.rawValue
+  @State private var target: String
+  @State private var query = ""
   @State private var copiedID: SSHShortcutID?
-  @State private var sshClientUnavailable = false
-  @SceneStorage("NetScope.sshExpandedShortcut") private var expandedShortcutRaw = ""
-  @SceneStorage("NetScope.sshPreparationExpanded") private var preparationExpanded = false
+  @State private var expandedIDs: Set<SSHShortcutID> = []
+  @State private var preparationExpanded = false
   @AppStorage("NetScope.nmapCompletedSteps") private var completedSteps = 0
 
   init(
@@ -49,11 +35,8 @@ struct SSHShortcutLibraryView: View {
     self.context = context
     self.devices = devices
     self.preferredShortcut = preferredShortcut
-  }
-
-  private var selectedCategory: SSHShortcutCategory {
-    get { SSHShortcutCategory(rawValue: selectedCategoryRaw) ?? .connection }
-    nonmutating set { selectedCategoryRaw = newValue.rawValue }
+    let suggestedTarget = context?.scanRangeDescription ?? devices.first?.address ?? ""
+    _target = State(initialValue: suggestedTarget)
   }
 
   private var targets: [ISHTarget] {
@@ -81,18 +64,7 @@ struct SSHShortcutLibraryView: View {
   }
 
   private var filteredShortcuts: [SSHShortcut] {
-    SSHShortcutSearch.filter(
-      SSHShortcutLibrary.shortcuts,
-      category: selectedCategory,
-      query: query
-    ).filter { $0.id != .connect }
-  }
-
-  private var quickConnectionResolution: SSHShortcutResolution {
-    SSHShortcutLibrary.resolve(
-      .connect,
-      context: SSHShortcutContext(username: username, host: host, target: nil)
-    )
+    SSHShortcutSearch.filter(SSHShortcutLibrary.shortcuts, query: query)
   }
 
   var body: some View {
@@ -100,26 +72,25 @@ struct SSHShortcutLibraryView: View {
       ScrollView {
         LazyVStack(spacing: 12) {
           InfoBanner(
-            icon: "link",
-            title: "Połączenie i diagnostyka",
-            message: "NetScope otwiera logowanie w zainstalowanym kliencie SSH. Dodatkowe polecenia diagnostyczne kopiuje do świadomego uruchomienia."
+            icon: "doc.on.clipboard",
+            title: "Tylko kopiowanie",
+            message: "NetScope przygotowuje i kopiuje polecenia. Nie łączy się przez SSH i niczego nie uruchamia. Używaj tylko własnej sieci lub działaj za zgodą właściciela."
           )
-          categoryPicker
           preparation
           configuration
 
-          if filteredShortcuts.isEmpty {
-            ContentUnavailableView.search(text: query)
-              .frame(minHeight: 160)
-          } else {
-            VStack(alignment: .leading, spacing: 8) {
-              Text(selectedCategory.title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-              ForEach(filteredShortcuts) { shortcut in
-                shortcutCard(shortcut)
-                  .id(shortcut.id)
+          ForEach(SSHShortcutCategory.allCases) { category in
+            let categoryShortcuts = filteredShortcuts.filter { $0.category == category }
+            if !categoryShortcuts.isEmpty {
+              VStack(alignment: .leading, spacing: 8) {
+                Text(category.title)
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(.secondary)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                ForEach(categoryShortcuts) { shortcut in
+                  shortcutCard(shortcut)
+                    .id(shortcut.id)
+                }
               }
             }
           }
@@ -127,54 +98,22 @@ struct SSHShortcutLibraryView: View {
         .padding(12)
       }
       .onAppear {
-        if target.isEmpty {
-          target = context?.scanRangeDescription ?? devices.first?.address ?? ""
-        }
         guard let preferredShortcut else { return }
-        if let shortcut = SSHShortcutLibrary.shortcuts.first(where: { $0.id == preferredShortcut }) {
-          selectedCategory = shortcut.category
-        }
         DispatchQueue.main.async {
           withAnimation { proxy.scrollTo(preferredShortcut, anchor: .center) }
         }
       }
     }
     .background(Color(.systemGroupedBackground))
-    .navigationTitle("Mac przez SSH")
+    .navigationTitle("iSH + Mac przez SSH")
     .navigationBarTitleDisplayMode(.inline)
     .searchable(text: $query, prompt: "Nazwa, opis lub kategoria")
   }
 
-  private var categoryPicker: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 8) {
-        ForEach(SSHShortcutCategory.allCases) { category in
-          Button {
-            selectedCategory = category
-          } label: {
-            Text(category.title)
-              .font(.caption.weight(.semibold))
-              .padding(.horizontal, 11)
-              .padding(.vertical, 8)
-              .background(
-                selectedCategory == category ? Color.cyan : Color(.secondarySystemGroupedBackground),
-                in: Capsule()
-              )
-              .foregroundStyle(selectedCategory == category ? .white : .primary)
-          }
-          .buttonStyle(.plain)
-          .accessibilityAddTraits(selectedCategory == category ? .isSelected : [])
-        }
-      }
-      .padding(.horizontal, 1)
-    }
-    .accessibilityLabel("Kategorie poleceń SSH")
-  }
-
   private var preparation: some View {
-    DisclosureGroup("Jak przygotować klienta SSH i Maca", isExpanded: $preparationExpanded) {
+    DisclosureGroup("Jak przygotować iSH i Maca", isExpanded: $preparationExpanded) {
       VStack(alignment: .leading, spacing: 8) {
-        requirement("Klient SSH, np. Termius, jest zainstalowany na iPhonie.")
+        requirement("iSH jest zainstalowany na iPhonie.")
         requirement("Na Macu włączono Zdalne logowanie dla właściwego użytkownika.")
         requirement("Znasz nazwę konta oraz prywatny adres lub nazwę Maca.")
         requirement("iPhone ma trasę do Maca: ta sama sieć, VPN albo świadomie skonfigurowany zdalny SSH.")
@@ -182,7 +121,7 @@ struct SSHShortcutLibraryView: View {
       }
       .padding(.top, 8)
     }
-    .accessibilityLabel("Jak przygotować klienta SSH i Maca")
+    .accessibilityLabel("Jak przygotować iSH i Maca")
     .accessibilityHint("Rozwija listę pięciu wymagań")
     .padding(12)
     .background(.background, in: RoundedRectangle(cornerRadius: 14))
@@ -197,15 +136,11 @@ struct SSHShortcutLibraryView: View {
 
   private var configuration: some View {
     ToolCard(
-      icon: "person.crop.circle",
+      icon: "person.crop.circle.badge.key",
       title: "Dane połączenia",
       subtitle: "Lokalne dane bez haseł i kluczy"
     ) {
       VStack(spacing: 10) {
-        TextField("Nazwa profilu", text: $profileName)
-          .textInputAutocapitalization(.words)
-          .accessibilityLabel("Nazwa profilu SSH")
-
         TextField("Użytkownik", text: $username)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
@@ -227,9 +162,6 @@ struct SSHShortcutLibraryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         } else {
           Picker("Cel prywatny", selection: $target) {
-            if target.isEmpty {
-              Text("Wybierz cel").tag("")
-            }
             ForEach(targets) { item in
               Text("\(item.title) — \(item.subtitle)").tag(item.address)
             }
@@ -240,44 +172,7 @@ struct SSHShortcutLibraryView: View {
           .accessibilityHint("Wybiera lokalną podsieć lub wykryte urządzenie")
         }
 
-        switch quickConnectionResolution {
-        case .blocked(let message):
-          Label(message, systemImage: "person.crop.circle.badge.exclamationmark")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        case .command:
-          Button {
-            guard let url = SSHShortcutLibrary.connectionURL(
-              context: SSHShortcutContext(username: username, host: host, target: nil)
-            ) else { return }
-            openURL(url) { accepted in
-              sshClientUnavailable = !accepted
-            }
-          } label: {
-            Label(
-              "Połącz z MacBookiem",
-              systemImage: "rectangle.connected.to.line.below"
-            )
-            .frame(maxWidth: .infinity)
-          }
-          .buttonStyle(.borderedProminent)
-          .tint(.cyan)
-          .accessibilityHint("Otwiera połączenie w zainstalowanym kliencie SSH")
-          .alert("Brak klienta SSH", isPresented: $sshClientUnavailable) {
-            Button("Otwórz App Store") {
-              if let url = URL(string: "itms-apps://apps.apple.com/app/id549039908") {
-                openURL(url)
-              }
-            }
-            Button("Anuluj", role: .cancel) {}
-          } message: {
-            Text("Zainstaluj Termius, aby otwierać sesje SSH bezpośrednio z NetScope.")
-          }
-        }
-
         Button("Wyczyść dane") {
-          profileName = "Mój Mac"
           username = ""
           host = ""
         }
@@ -317,9 +212,13 @@ struct SSHShortcutLibraryView: View {
           DisclosureGroup(
             "Pokaż polecenie",
             isExpanded: Binding(
-              get: { expandedShortcutRaw == shortcut.id.rawValue },
+              get: { expandedIDs.contains(shortcut.id) },
               set: { isExpanded in
-                expandedShortcutRaw = isExpanded ? shortcut.id.rawValue : ""
+                if isExpanded {
+                  expandedIDs.insert(shortcut.id)
+                } else {
+                  expandedIDs.remove(shortcut.id)
+                }
               }
             )
           ) {
@@ -340,7 +239,7 @@ struct SSHShortcutLibraryView: View {
             UIAccessibility.post(notification: .announcement, argument: "Skopiowano")
           } label: {
             Label(
-              copiedID == shortcut.id ? "Skopiowano" : "Kopiuj → iSH",
+              copiedID == shortcut.id ? "Skopiowano" : "Kopiuj",
               systemImage: copiedID == shortcut.id ? "checkmark" : "doc.on.doc"
             )
             .frame(maxWidth: .infinity)
@@ -348,7 +247,7 @@ struct SSHShortcutLibraryView: View {
           .buttonStyle(.borderedProminent)
           .tint(copiedID == shortcut.id ? .green : .cyan)
           .accessibilityLabel("Kopiuj polecenie: \(shortcut.title)")
-          .accessibilityHint("Kopiuje tekst; następnie przełącz się do aplikacji iSH")
+          .accessibilityHint("Kopiuje tekst do schowka bez uruchamiania")
         }
 
         if shortcut.id == preferredShortcut, let step = guideStep(for: shortcut.id) {

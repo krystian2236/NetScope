@@ -1,54 +1,14 @@
 import SwiftUI
 
-enum AppTab: Int, Hashable {
-  case dashboard = 0
-  case toolbox = 3
-  case comingSoon = 5
-
-  static let navigationOrder: [AppTab] = [
-    .dashboard, .toolbox, .comingSoon,
-  ]
-
-  static func restored(from rawValue: Int) -> AppTab {
-    AppTab(rawValue: rawValue) ?? .dashboard
-  }
-}
-
-enum ISHWorkspaceRoute: RawRepresentable, Hashable {
-  case library
-  case shortcut(SSHShortcutID)
-
-  static let libraryRawValue = "library"
-
-  init?(rawValue: String) {
-    if rawValue == Self.libraryRawValue {
-      self = .library
-    } else if let shortcutID = SSHShortcutID(rawValue: rawValue) {
-      self = .shortcut(shortcutID)
-    } else {
-      return nil
-    }
-  }
-
-  var rawValue: String {
-    switch self {
-    case .library: Self.libraryRawValue
-    case .shortcut(let shortcutID): shortcutID.rawValue
-    }
-  }
-
-  var shortcutID: SSHShortcutID? {
-    guard case .shortcut(let shortcutID) = self else { return nil }
-    return shortcutID
-  }
+enum AppTab: Hashable {
+  case dashboard, network, devices, nmap, services
 }
 
 struct AppShellView: View {
   @StateObject private var knownDeviceStore: KnownDeviceStore
   @StateObject private var scanner: NetworkScanner
   @StateObject private var tools = NetworkToolsModel()
-  @SceneStorage("NetScope.selectedTab") private var selectedTabRaw = AppTab.dashboard.rawValue
-  @SceneStorage("NetScope.ishWorkspaceRoute") private var ishWorkspaceRouteRaw = ""
+  @State private var selectedTab: AppTab = .dashboard
 
   init() {
     let store = KnownDeviceStore()
@@ -57,13 +17,17 @@ struct AppShellView: View {
   }
 
   var body: some View {
-    TabView(selection: selectedTab) {
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
-        .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
-      ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
-        .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
-      ComingSoonView()
-        .tabItem { Label("Wkrótce", systemImage: "sparkles") }.tag(AppTab.comingSoon)
+    TabView(selection: $selectedTab) {
+      DashboardView(scanner: scanner, tools: tools, knownDeviceStore: knownDeviceStore, selectedTab: $selectedTab)
+        .tabItem { Label("Start", systemImage: "square.grid.2x2") }.tag(AppTab.dashboard)
+      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore)
+        .tabItem { Label("Skan", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.network)
+      DevicesView(scanner: scanner, knownDeviceStore: knownDeviceStore, selectedTab: $selectedTab)
+        .tabItem { Label("Urządzenia", systemImage: "desktopcomputer") }.tag(AppTab.devices)
+      NmapGuideView(scanner: scanner)
+        .tabItem { Label("Nmap", systemImage: "terminal") }.tag(AppTab.nmap)
+      ServicesHubView(scanner: scanner, tools: tools)
+        .tabItem { Label("Usługi", systemImage: "wrench.and.screwdriver") }.tag(AppTab.services)
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -74,45 +38,44 @@ struct AppShellView: View {
     .task { scanner.refreshContext(); tools.refreshLocalContext() }
   }
 
-  private var selectedTab: Binding<AppTab> {
-    Binding(
-      get: { AppTab.restored(from: selectedTabRaw) },
-      set: { selectedTabRaw = $0.rawValue }
-    )
-  }
-
   private var storeErrorIsPresented: Binding<Bool> {
     Binding(get: { knownDeviceStore.errorMessage != nil }, set: { if !$0 { knownDeviceStore.clearError() } })
   }
 }
 
-struct DevicesView: View {
+private struct DevicesView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
+  @Binding var selectedTab: AppTab
 
   var body: some View {
-    Group {
-      if scanner.devices.isEmpty {
-        ContentUnavailableView {
-          Label("Brak urządzeń", systemImage: "desktopcomputer")
-        } description: {
-          Text("Wróć do ekranu Start i wykonaj skan prywatnej sieci lokalnej.")
-        }
-      } else {
-        List(scanner.devices) { device in
-          NavigationLink {
-            DeviceDetailView(device: device, key: key(for: device), knownDeviceStore: knownDeviceStore)
-          } label: {
-            DeviceRow(device: device, record: record(for: device), registryStatus: status(for: device))
+    NavigationStack {
+      Group {
+        if scanner.devices.isEmpty {
+          ContentUnavailableView {
+            Label("Brak urządzeń", systemImage: "desktopcomputer")
+          } description: {
+            Text("Najpierw wykonaj skan prywatnej sieci lokalnej.")
+          } actions: {
+            Button("Przejdź do skanu") { selectedTab = .network }
+              .buttonStyle(.borderedProminent).tint(.cyan)
           }
-          .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
-          .listRowSeparator(.hidden)
+        } else {
+          List(scanner.devices) { device in
+            NavigationLink {
+              DeviceDetailView(device: device, key: key(for: device), knownDeviceStore: knownDeviceStore)
+            } label: {
+              DeviceRow(device: device, record: record(for: device), registryStatus: status(for: device))
+            }
+            .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
+            .listRowSeparator(.hidden)
+          }
+          .listStyle(.plain)
         }
-        .listStyle(.plain)
       }
+      .navigationTitle("Urządzenia")
+      .navigationBarTitleDisplayMode(.inline)
     }
-    .navigationTitle("Urządzenia")
-    .navigationBarTitleDisplayMode(.inline)
   }
 
   private func key(for device: NetworkDevice) -> KnownDeviceKey? {
@@ -129,51 +92,34 @@ struct DevicesView: View {
   }
 }
 
-private struct ComingSoonView: View {
-  var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          Label("Konto i synchronizacja", systemImage: "person.crop.circle.badge.checkmark")
-          Label("Zadania i przypomnienia", systemImage: "checklist")
-          Label("Informacje o aktualizacjach", systemImage: "arrow.triangle.2.circlepath")
-        } header: {
-          Text("Planowane")
-        } footer: {
-          Text("Pojawią się tutaj dopiero po wdrożeniu konta lub zakupu. Ta wersja niczego nie wysyła ani nie wymaga logowania.")
-        }
-      }
-      .navigationTitle("Wkrótce")
-    }
-  }
-}
-
-struct ServicesHubView: View {
+private struct ServicesHubView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var tools: NetworkToolsModel
 
   var body: some View {
-    List {
-      Section {
-        InfoBanner(icon: "wrench.and.screwdriver.fill", title: "Narzędzia sieciowe", message: "Wszystkie dotychczasowe funkcje są tutaj, w jednym uporządkowanym miejscu.")
-          .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
-      }
-      Section("Sprawdzanie") {
-        serviceLink(title: "Porty", subtitle: "Sprawdź dostępność wybranych usług TCP", icon: "shield.lefthalf.filled") {
-          PortScannerView(model: tools)
+    NavigationStack {
+      List {
+        Section {
+          InfoBanner(icon: "wrench.and.screwdriver.fill", title: "Narzędzia sieciowe", message: "Wszystkie dotychczasowe funkcje są tutaj, w jednym uporządkowanym miejscu.")
+            .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
         }
-        serviceLink(title: "Ping i adresy", subtitle: "DNS, lokalny i publiczny IP oraz TCP Ping", icon: "waveform.path.ecg") {
-          DiagnosticsView(model: tools)
+        Section("Sprawdzanie") {
+          serviceLink(title: "Porty", subtitle: "Sprawdź dostępność wybranych usług TCP", icon: "shield.lefthalf.filled") {
+            PortScannerView(model: tools)
+          }
+          serviceLink(title: "Ping i adresy", subtitle: "DNS, lokalny i publiczny IP oraz TCP Ping", icon: "waveform.path.ecg") {
+            DiagnosticsView(model: tools)
+          }
+        }
+        Section("Wykrywanie automatyczne") {
+          serviceLink(title: "Bonjour", subtitle: "Usługi ogłaszane przez urządzenia w sieci", icon: "bonjour") {
+            ServicesView(discovery: scanner.bonjourDiscovery)
+          }
         }
       }
-      Section("Wykrywanie automatyczne") {
-        serviceLink(title: "Bonjour", subtitle: "Usługi ogłaszane przez urządzenia w sieci", icon: "bonjour") {
-          ServicesView(discovery: scanner.bonjourDiscovery)
-        }
-      }
+      .navigationTitle("Usługi")
+      .navigationBarTitleDisplayMode(.inline)
     }
-    .navigationTitle("Usługi")
-    .navigationBarTitleDisplayMode(.inline)
   }
 
   private func serviceLink<Destination: View>(title: String, subtitle: String, icon: String, @ViewBuilder destination: () -> Destination) -> some View {
