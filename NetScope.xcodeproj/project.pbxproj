@@ -38,6 +38,8 @@
 		E00000000000000000000028 /* ToolLearningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* ToolLearningView.swift */; };
 		E00000000000000000000029 /* NmapCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* NmapCatalog.swift */; };
 		E00000000000000000000030 /* BuildVariant.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000026 /* BuildVariant.swift */; };
+		E00000000000000000000031 /* VirtualNetworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000027 /* VirtualNetworkTests.swift */; };
+		E00000000000000000000032 /* VirtualNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* VirtualNetwork.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +87,8 @@
 		F00000000000000000000024 /* ToolLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolLearningView.swift; sourceTree = "<group>"; };
 		F00000000000000000000025 /* NmapCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NmapCatalog.swift; sourceTree = "<group>"; };
 		F00000000000000000000026 /* BuildVariant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildVariant.swift; sourceTree = "<group>"; };
+		F00000000000000000000027 /* VirtualNetworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualNetworkTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000028 /* VirtualNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualNetwork.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +146,7 @@
 				F00000000000000000000024 /* ToolLearningView.swift */,
 				F00000000000000000000025 /* NmapCatalog.swift */,
 				F00000000000000000000026 /* BuildVariant.swift */,
+				F00000000000000000000028 /* VirtualNetwork.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -156,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				F0000000000000000000000A /* NetScopeTests.swift */,
+				F00000000000000000000027 /* VirtualNetworkTests.swift */,
 			);
 			path = NetScopeTests;
 			sourceTree = "<group>";
@@ -293,6 +299,7 @@
 				E00000000000000000000028 /* ToolLearningView.swift in Sources */,
 				E00000000000000000000029 /* NmapCatalog.swift in Sources */,
 				E00000000000000000000030 /* BuildVariant.swift in Sources */,
+				E00000000000000000000032 /* VirtualNetwork.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,
@@ -305,6 +312,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E00000000000000000000009 /* NetScopeTests.swift in Sources */,
+				E00000000000000000000031 /* VirtualNetworkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

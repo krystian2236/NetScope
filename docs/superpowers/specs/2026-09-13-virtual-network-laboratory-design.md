@@ -38,6 +38,9 @@ nie wykonuje poleceń utworzonych przez konstruktor.
 - Nie zawiera przełącznika, ukrytej trasy ani kodu uruchamiającego widoki
   przeznaczone wyłącznie dla wariantu Developer.
 - Toolbox prezentuje wyłącznie funkcje zaakceptowane dla dystrybucji.
+- Każde skatalogowane narzędzie zachowuje opisy wszystkich udokumentowanych
+  opcji edukacyjnych. Jeżeli opcji nie można udostępnić w App Store, pozostaje
+  widoczna jako nieaktywna karta z opisem działania i powodem niedostępności.
 
 ### NetScope Developer
 

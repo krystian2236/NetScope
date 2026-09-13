@@ -61,7 +61,7 @@
 - Consumes: flagę kompilatora `NETSCOPE_DEVELOPER_TOOLS`.
 - Produces: `BuildVariant.current`, `includesDeveloperTools`, dwa schematy i osobne identyfikatory bundle.
 
-- [ ] **Step 1: Dodaj test kontraktu aktywnego wariantu**
+- [x] **Step 1: Dodaj test kontraktu aktywnego wariantu**
 
 ```swift
 @Test("Build variant has one compile-time identity")
@@ -76,7 +76,7 @@ func buildVariantIdentity() {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź porażkę z brakiem `BuildVariant`**
+- [x] **Step 2: Uruchom test i potwierdź porażkę z brakiem `BuildVariant`**
 
 ```zsh
 xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
@@ -84,7 +84,7 @@ xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
   -only-testing:NetScopeTests/SessionRestorationTests CODE_SIGNING_ALLOWED=NO
 ```
 
-- [ ] **Step 3: Dodaj kompilacyjny model wariantu**
+- [x] **Step 3: Dodaj kompilacyjny model wariantu**
 
 ```swift
 enum BuildVariant: Equatable, Sendable {
@@ -103,7 +103,7 @@ enum BuildVariant: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Dodaj konfigurację i współdzielone schematy**
+- [x] **Step 4: Dodaj konfigurację i współdzielone schematy**
 
 Utwórz konfiguracje `Debug-Developer` i `Release-Developer` jako kopie
 odpowiednich konfiguracji bazowych. Tylko one otrzymują
@@ -113,7 +113,7 @@ odpowiednich konfiguracji bazowych. Tylko one otrzymują
 używa istniejących konfiguracji oraz `pl.krystian.NetScope`; schemat `NetScope
 Developer` używa konfiguracji Developer.
 
-- [ ] **Step 5: Uruchom test w obu schematach i sprawdź identyfikatory**
+- [x] **Step 5: Uruchom test w obu schematach i sprawdź identyfikatory**
 
 ```zsh
 xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope App Store' \
@@ -125,7 +125,7 @@ xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope Developer' \
 Expected: oba zestawy PASS; wynik `-showBuildSettings` zwraca odpowiednio
 `pl.krystian.NetScope` i `pl.krystian.NetScope.dev`.
 
-- [ ] **Step 6: Zatrzymaj się przed commitem**
+- [x] **Step 6: Zatrzymaj się przed commitem**
 
 Po zgodzie użytkownika commit: `chore: separate App Store and developer builds`.
 
@@ -142,7 +142,7 @@ Po zgodzie użytkownika commit: `chore: separate App Store and developer builds`
 - Consumes: wyłącznie typy standardowej biblioteki Swift.
 - Produces: `VirtualHost`, `VirtualService`, `VirtualNetwork.demo` oraz metody `host(at:)` i `activeHosts(in:)`.
 
-- [ ] **Step 1: Dodaj test danych sieci**
+- [x] **Step 1: Dodaj test danych sieci**
 
 ```swift
 import Testing
@@ -162,7 +162,7 @@ struct VirtualNetworkTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź oczekiwaną porażkę**
+- [x] **Step 2: Uruchom test i potwierdź oczekiwaną porażkę**
 
 Run:
 
@@ -174,7 +174,7 @@ xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
 
 Expected: FAIL, ponieważ `VirtualNetwork` nie istnieje.
 
-- [ ] **Step 3: Dodaj minimalny model i dane demo**
+- [x] **Step 3: Dodaj minimalny model i dane demo**
 
 ```swift
 import Foundation
@@ -225,7 +225,7 @@ struct VirtualNetwork: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Dodaj oba pliki do targetów i uruchom test ponownie**
+- [x] **Step 4: Dodaj oba pliki do targetów i uruchom test ponownie**
 
 Expected: `VirtualNetworkTests` PASS.
 
