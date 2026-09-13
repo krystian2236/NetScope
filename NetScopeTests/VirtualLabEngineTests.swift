@@ -72,3 +72,33 @@ struct VirtualLabEngineTests {
     #expect(engine.execute(command) == engine.execute(command))
   }
 }
+
+@Suite("Lab command presentation")
+struct LabCommandPresentationTests {
+  @Test("Nmap solution is split into learning categories")
+  func categorizedNmapSolution() {
+    let presentation = LabCommandPresentation(
+      intent: .inspect(host: "192.168.50.20", ports: [22, 80], versions: true)
+    )
+
+    #expect(presentation.command == "nmap -sT -sV -p 22,80 192.168.50.20")
+    #expect(presentation.segments == [
+      .init(category: .tool, value: "nmap", explanation: "Program do rozpoznawania sieci i usług."),
+      .init(category: .scanType, value: "-sT", explanation: "Pełne połączenie TCP używane bez uprawnień administratora."),
+      .init(category: .option, value: "-sV", explanation: "Rozpoznaje usługę i jej wersję."),
+      .init(category: .option, value: "-p 22,80", explanation: "Ogranicza sprawdzenie do portów 22 i 80."),
+      .init(category: .target, value: "192.168.50.20", explanation: "Host analizowany w sieci demonstracyjnej."),
+    ])
+  }
+
+  @Test("SSH solution separates user and host")
+  func categorizedSSHSolution() {
+    let presentation = LabCommandPresentation(
+      intent: .connectSSH(user: "learner", host: "mac.lab")
+    )
+
+    #expect(presentation.command == "ssh learner@mac.lab")
+    #expect(presentation.segments.map(\.category) == [.tool, .user, .target])
+    #expect(presentation.segments.map(\.value) == ["ssh", "learner", "mac.lab"])
+  }
+}

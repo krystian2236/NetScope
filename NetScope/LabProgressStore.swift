@@ -22,6 +22,20 @@ final class LabProgressStore: ObservableObject {
 
   func complete(missionID: String, stepID: String) {
     completed.insert(CompletedLabStep(missionID: missionID, stepID: stepID))
+    persist()
+  }
+
+  func reset(missionID: String) {
+    completed = completed.filter { $0.missionID != missionID }
+    persist()
+  }
+
+  func resetAll() {
+    completed.removeAll()
+    persist()
+  }
+
+  private func persist() {
     if let data = try? JSONEncoder().encode(completed) {
       defaults.set(data, forKey: key)
     }

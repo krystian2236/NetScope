@@ -14,6 +14,13 @@ enum AppTab: Int, Hashable {
   }
 }
 
+enum AppRouteRequest: Equatable {
+  case tryOwnNetwork
+
+  var recommendedProfile: ScanProfile { .quick }
+  var startsAutomatically: Bool { false }
+}
+
 enum ISHWorkspaceRoute: RawRepresentable, Hashable {
   case library
   case shortcut(SSHShortcutID)
@@ -49,6 +56,7 @@ struct AppShellView: View {
   @StateObject private var tools = NetworkToolsModel()
   @SceneStorage("NetScope.selectedTab") private var selectedTabRaw = AppTab.dashboard.rawValue
   @SceneStorage("NetScope.ishWorkspaceRoute") private var ishWorkspaceRouteRaw = ""
+  @State private var routeNotice: String?
 
   init() {
     let store = KnownDeviceStore()
@@ -58,12 +66,17 @@ struct AppShellView: View {
 
   var body: some View {
     TabView(selection: selectedTab) {
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+      ScannerView(
+        scanner: scanner,
+        knownDeviceStore: knownDeviceStore,
+        tools: tools,
+        routeNotice: routeNotice
+      )
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
-      ComingSoonView()
-        .tabItem { Label("Wkrótce", systemImage: "sparkles") }.tag(AppTab.comingSoon)
+      LaboratoryView(onTryOwnNetwork: tryOwnNetwork)
+        .tabItem { Label("Laboratorium", systemImage: "terminal") }.tag(AppTab.comingSoon)
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -83,6 +96,13 @@ struct AppShellView: View {
 
   private var storeErrorIsPresented: Binding<Bool> {
     Binding(get: { knownDeviceStore.errorMessage != nil }, set: { if !$0 { knownDeviceStore.clearError() } })
+  }
+
+  private func tryOwnNetwork() {
+    let request = AppRouteRequest.tryOwnNetwork
+    scanner.profile = request.recommendedProfile
+    routeNotice = "Profil Szybki jest gotowy. Skan rozpocznie się dopiero po dotknięciu przycisku Rozpocznij skan."
+    selectedTabRaw = AppTab.dashboard.rawValue
   }
 }
 
@@ -126,25 +146,6 @@ struct DevicesView: View {
   private func status(for device: NetworkDevice) -> DeviceRegistryStatus {
     guard let key = key(for: device) else { return .unknown }
     return DeviceRegistryStatus(record: knownDeviceStore.record(for: key), isNew: scanner.newDeviceKeys.contains(key))
-  }
-}
-
-private struct ComingSoonView: View {
-  var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          Label("Konto i synchronizacja", systemImage: "person.crop.circle.badge.checkmark")
-          Label("Zadania i przypomnienia", systemImage: "checklist")
-          Label("Informacje o aktualizacjach", systemImage: "arrow.triangle.2.circlepath")
-        } header: {
-          Text("Planowane")
-        } footer: {
-          Text("Pojawią się tutaj dopiero po wdrożeniu konta lub zakupu. Ta wersja niczego nie wysyła ani nie wymaga logowania.")
-        }
-      }
-      .navigationTitle("Wkrótce")
-    }
   }
 }
 

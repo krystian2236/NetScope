@@ -34,6 +34,12 @@ struct SessionRestorationTests {
     #expect(!BuildVariant.current.includesDeveloperTools)
     #endif
   }
+
+  @Test("Try-own-network always starts with quick profile")
+  func laboratoryUsesSafeScanProfile() {
+    #expect(AppRouteRequest.tryOwnNetwork.recommendedProfile == .quick)
+    #expect(AppRouteRequest.tryOwnNetwork.startsAutomatically == false)
+  }
 }
 
 @Suite("Toolbox workflow")

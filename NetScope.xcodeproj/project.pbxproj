@@ -45,6 +45,8 @@
 		E00000000000000000000035 /* LabMissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002B /* LabMissionTests.swift */; };
 		E00000000000000000000036 /* LabMission.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002C /* LabMission.swift */; };
 		E00000000000000000000037 /* LabProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002D /* LabProgressStore.swift */; };
+		E00000000000000000000038 /* TerminalLessonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002E /* TerminalLessonView.swift */; };
+		E00000000000000000000039 /* LaboratoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002F /* LaboratoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +101,8 @@
 		F0000000000000000000002B /* LabMissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabMissionTests.swift; sourceTree = "<group>"; };
 		F0000000000000000000002C /* LabMission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabMission.swift; sourceTree = "<group>"; };
 		F0000000000000000000002D /* LabProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabProgressStore.swift; sourceTree = "<group>"; };
+		F0000000000000000000002E /* TerminalLessonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLessonView.swift; sourceTree = "<group>"; };
+		F0000000000000000000002F /* LaboratoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaboratoryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +164,8 @@
 				F0000000000000000000002A /* VirtualLabEngine.swift */,
 				F0000000000000000000002C /* LabMission.swift */,
 				F0000000000000000000002D /* LabProgressStore.swift */,
+				F0000000000000000000002E /* TerminalLessonView.swift */,
+				F0000000000000000000002F /* LaboratoryView.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -318,6 +324,8 @@
 				E00000000000000000000034 /* VirtualLabEngine.swift in Sources */,
 				E00000000000000000000036 /* LabMission.swift in Sources */,
 				E00000000000000000000037 /* LabProgressStore.swift in Sources */,
+				E00000000000000000000038 /* TerminalLessonView.swift in Sources */,
+				E00000000000000000000039 /* LaboratoryView.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,

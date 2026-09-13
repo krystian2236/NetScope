@@ -50,6 +50,89 @@ enum LabCommandIntent: Equatable, Sendable {
   }
 }
 
+enum LabCommandSegmentCategory: String, Equatable, Sendable {
+  case tool
+  case scanType
+  case option
+  case target
+  case user
+
+  var title: String {
+    switch self {
+    case .tool: "Narzędzie"
+    case .scanType: "Typ skanu"
+    case .option: "Opcja"
+    case .target: "Cel"
+    case .user: "Użytkownik"
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .tool: "terminal"
+    case .scanType: "dot.radiowaves.left.and.right"
+    case .option: "slider.horizontal.3"
+    case .target: "scope"
+    case .user: "person.fill"
+    }
+  }
+}
+
+struct LabCommandSegment: Equatable, Sendable {
+  let category: LabCommandSegmentCategory
+  let value: String
+  let explanation: String
+}
+
+struct LabCommandPresentation: Equatable, Sendable {
+  let command: String
+  let segments: [LabCommandSegment]
+
+  init(intent: LabCommandIntent) {
+    switch intent {
+    case .discover(let cidr):
+      command = "nmap -sn \(cidr)"
+      segments = [
+        .init(category: .tool, value: "nmap", explanation: "Program do rozpoznawania sieci i usług."),
+        .init(category: .scanType, value: "-sn", explanation: "Wykrywa aktywne hosty bez skanowania portów."),
+        .init(category: .target, value: cidr, explanation: "Sieć demonstracyjna, w której wyszukiwane są hosty."),
+      ]
+    case .inspect(let host, let ports, let versions):
+      var commandParts = ["nmap", "-sT"]
+      var commandSegments: [LabCommandSegment] = [
+        .init(category: .tool, value: "nmap", explanation: "Program do rozpoznawania sieci i usług."),
+        .init(category: .scanType, value: "-sT", explanation: "Pełne połączenie TCP używane bez uprawnień administratora."),
+      ]
+      if versions {
+        commandParts.append("-sV")
+        commandSegments.append(
+          .init(category: .option, value: "-sV", explanation: "Rozpoznaje usługę i jej wersję.")
+        )
+      }
+      if !ports.isEmpty {
+        let value = ports.map(String.init).joined(separator: ",")
+        commandParts.append(contentsOf: ["-p", value])
+        commandSegments.append(
+          .init(category: .option, value: "-p \(value)", explanation: "Ogranicza sprawdzenie do portów \(value.replacingOccurrences(of: ",", with: " i ")).")
+        )
+      }
+      commandParts.append(host)
+      commandSegments.append(
+        .init(category: .target, value: host, explanation: "Host analizowany w sieci demonstracyjnej.")
+      )
+      command = commandParts.joined(separator: " ")
+      segments = commandSegments
+    case .connectSSH(let user, let host):
+      command = "ssh \(user)@\(host)"
+      segments = [
+        .init(category: .tool, value: "ssh", explanation: "Program do bezpiecznego zdalnego logowania."),
+        .init(category: .user, value: user, explanation: "Nazwa konta używana podczas logowania."),
+        .init(category: .target, value: host, explanation: "Host, z którym ma zostać nawiązane połączenie."),
+      ]
+    }
+  }
+}
+
 struct LabMission: Identifiable, Equatable, Sendable {
   let id: String
   let title: String

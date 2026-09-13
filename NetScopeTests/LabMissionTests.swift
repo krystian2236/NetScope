@@ -32,6 +32,38 @@ struct LabMissionTests {
     )
   }
 
+  @Test("Resetting one mission preserves other progress")
+  func resetMission() {
+    let suite = "LabProgressTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+
+    let store = LabProgressStore(defaults: defaults)
+    store.complete(missionID: "host-discovery", stepID: "discover")
+    store.complete(missionID: "ssh-basics", stepID: "connect")
+
+    store.reset(missionID: "host-discovery")
+
+    #expect(!store.isComplete(missionID: "host-discovery", stepID: "discover"))
+    #expect(store.isComplete(missionID: "ssh-basics", stepID: "connect"))
+  }
+
+  @Test("Resetting all progress clears every mission")
+  func resetAllProgress() {
+    let suite = "LabProgressTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+
+    let store = LabProgressStore(defaults: defaults)
+    store.complete(missionID: "host-discovery", stepID: "discover")
+    store.complete(missionID: "ssh-basics", stepID: "connect")
+
+    store.resetAll()
+
+    #expect(store.completed.isEmpty)
+    #expect(LabProgressStore(defaults: defaults).completed.isEmpty)
+  }
+
   @Test("Demo contains three free missions")
   func freeDemoMissions() {
     #expect(LabMission.demo.map(\.id) == ["host-discovery", "ports-services", "ssh-basics"])

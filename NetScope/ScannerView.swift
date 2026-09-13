@@ -4,11 +4,19 @@ struct ScannerView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @ObservedObject var tools: NetworkToolsModel
+  let routeNotice: String?
 
   var body: some View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          if let routeNotice {
+            InfoBanner(
+              icon: "hand.tap.fill",
+              title: "Gotowe do próby",
+              message: routeNotice
+            )
+          }
           NetworkHeaderCard(context: scanner.context)
           StartDestinations(
             scanner: scanner,

@@ -491,7 +491,7 @@ Po zgodzie użytkownika commit: `feat: add demo missions and progress`.
 - Consumes: `VirtualLabEngine`, `LabMission`, `LabProgressStore`, `EntitlementAccess`.
 - Produces: `LaboratoryView(onTryOwnNetwork:)` i `TerminalLessonView(mission:onTryOwnNetwork:)`.
 
-- [ ] **Step 1: Dodaj test stabilnego katalogu demo**
+- [x] **Step 1: Dodaj test stabilnego katalogu demo**
 
 ```swift
 @Test("Demo exposes three free missions in learning order")
@@ -501,11 +501,11 @@ func demoMissionOrder() {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź jego wynik przed zmianą UI**
+- [x] **Step 2: Uruchom test i potwierdź jego wynik przed zmianą UI**
 
 Expected: PASS po Task 3; jest to test kontraktu wejściowego widoku.
 
-- [ ] **Step 3: Zbuduj listę lekcji**
+- [x] **Step 3: Zbuduj listę lekcji**
 
 ```swift
 struct LaboratoryView: View {
@@ -525,7 +525,7 @@ struct LaboratoryView: View {
 }
 ```
 
-- [ ] **Step 4: Zbuduj terminal bez automatycznego wykonywania**
+- [x] **Step 4: Zbuduj terminal bez automatycznego wykonywania**
 
 Dodaj model wpisu:
 
@@ -543,7 +543,7 @@ Przycisk „Uruchom w laboratorium” wywołuje wyłącznie
 rozwijane `VirtualExplanation`. Pole tekstowe ma etykietę VoiceOver „Polecenie
 laboratorium”; komunikaty sukcesu są ogłaszane przez accessibility announcement.
 
-- [ ] **Step 5: Dodaj zachowanie błędów i podpowiedzi**
+- [x] **Step 5: Dodaj zachowanie błędów i podpowiedzi**
 
 Nieznane polecenie pozostaje w historii. Błąd nie zeruje wpisu ani postępu. Podpowiedzi odsłaniają się kolejno, a pełne rozwiązanie pojawia się dopiero po ostatniej podpowiedzi.
 
