@@ -8,6 +8,12 @@ struct LabCurriculumTests {
     #expect(LabToolID.firstMilestone == [.nmap, .nuclei, .dig, .curl])
   }
 
+  @Test("First milestone exposes four complete lab programs")
+  func firstMilestonePrograms() {
+    #expect(LabCurriculum.firstMilestonePrograms.map(\.id) == [.nmap, .nuclei, .dig, .curl])
+    #expect(LabCurriculum.firstMilestonePrograms.allSatisfy { !$0.modules.isEmpty })
+  }
+
   @Test("Developer opens Pro while Demo does not")
   func accessPolicy() {
     #expect(LabAccessPolicy.canOpen(.pro, state: .demo, variant: .developer))

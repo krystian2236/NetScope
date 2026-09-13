@@ -46,6 +46,15 @@ struct LabProgram: Identifiable, Equatable, Sendable {
   let modules: [LabModule]
 }
 
+enum LabCurriculum {
+  static let firstMilestonePrograms: [LabProgram] = [
+    NmapLabProgram.definition,
+    NucleiLabProgram.definition,
+    DigLabProgram.definition,
+    CurlLabProgram.definition,
+  ]
+}
+
 enum LabAccessPolicy {
   static func canOpen(
     _ tier: LabAccessTier,

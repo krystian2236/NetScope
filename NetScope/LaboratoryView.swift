@@ -3,7 +3,9 @@ import SwiftUI
 struct LaboratoryView: View {
   let missions: [LabMission]
   let programs: [LabProgram]
+  let accessState: LabAccessState
   let onTryOwnNetwork: () -> Void
+  let discoveredTargets: [String]
 
   @StateObject private var progressStore = LabProgressStore()
   @State private var confirmsResetAll = false
@@ -11,12 +13,16 @@ struct LaboratoryView: View {
 
   init(
     missions: [LabMission] = LabMission.demo,
-    programs: [LabProgram] = [NmapLabProgram.definition, NucleiLabProgram.definition],
-    onTryOwnNetwork: @escaping () -> Void
+    programs: [LabProgram] = LabCurriculum.firstMilestonePrograms,
+    accessState: LabAccessState = .demo,
+    onTryOwnNetwork: @escaping () -> Void,
+    discoveredTargets: [String] = []
   ) {
     self.missions = missions
     self.programs = programs
+    self.accessState = accessState
     self.onTryOwnNetwork = onTryOwnNetwork
+    self.discoveredTargets = discoveredTargets
   }
 
   var body: some View {
@@ -73,7 +79,8 @@ struct LaboratoryView: View {
           TerminalLessonView(
             mission: mission,
             progressStore: progressStore,
-            onTryOwnNetwork: onTryOwnNetwork
+            onTryOwnNetwork: onTryOwnNetwork,
+            discoveredTargets: discoveredTargets
           )
         } label: {
           HStack(spacing: 12) {
@@ -96,9 +103,10 @@ struct LaboratoryView: View {
       if let program = programs.first(where: { $0.id == toolID }) {
         LabProgramView(
           program: program,
-          accessState: .demo,
+          accessState: accessState,
           progressStore: progressStore,
-          onTryOwnNetwork: onTryOwnNetwork
+          onTryOwnNetwork: onTryOwnNetwork,
+          discoveredTargets: discoveredTargets
         )
       } else {
         ContentUnavailableView(

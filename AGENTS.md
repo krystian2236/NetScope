@@ -28,6 +28,12 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 - Nie twierdź, że testy przeszły, jeśli zostały tylko skompilowane albo ich uruchomienie zablokował symulator.
 - Po zakończeniu podaj: wynik, zmienione pliki, wykonaną weryfikację i jedno krótkie zalecenie lub wniosek.
 
+## Simulator iOS
+
+- Domyślnym urządzeniem projektu jest `NetScope — iPhone 17` o UDID `0058F185-AD3B-4AE6-83B9-337E482F17F2` z iOS 27.0. Przy poleceniach `xcodebuild` i `simctl` zawsze wskazuj ten UDID jawnie.
+- Po zmianach restartuj tylko aplikację. Nie wyłączaj, nie restartuj ani nie wymazuj całego Simulatora bez osobnego polecenia użytkownika.
+- Do kontroli innych rozmiarów używaj trybu zmiany rozmiaru ekranu w Device Hub zamiast tworzenia lub przełączania Simulatora.
+
 ## App Store
 
 - Przy zmianach wydaniowych sprawdź `Info.plist`, `PrivacyInfo.xcprivacy`, używane uprawnienia, deklaracje prywatności, numer wersji i zasoby aplikacji.

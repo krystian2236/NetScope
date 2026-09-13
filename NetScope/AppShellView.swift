@@ -76,7 +76,10 @@ struct AppShellView: View {
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
-      LaboratoryView(onTryOwnNetwork: tryOwnNetwork)
+      LaboratoryView(
+        onTryOwnNetwork: tryOwnNetwork,
+        discoveredTargets: discoveredTargetsFromScanner
+      )
         .tabItem { Label("Laboratorium", systemImage: "terminal") }.tag(AppTab.comingSoon)
       CipherPathInfoView()
         .tabItem { Label("CipherPath", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
@@ -100,6 +103,13 @@ struct AppShellView: View {
 
   private var storeErrorIsPresented: Binding<Bool> {
     Binding(get: { knownDeviceStore.errorMessage != nil }, set: { if !$0 { knownDeviceStore.clearError() } })
+  }
+
+  private var discoveredTargetsFromScanner: [String] {
+    let addresses = scanner.devices.map(\.address)
+    var seen: Set<String> = []
+    return addresses
+      .filter { seen.insert($0).inserted }
   }
 
   private func tryOwnNetwork() {

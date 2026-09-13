@@ -5,6 +5,7 @@ struct LabProgramView: View {
   let accessState: LabAccessState
   @ObservedObject var progressStore: LabProgressStore
   let onTryOwnNetwork: () -> Void
+  let discoveredTargets: [String]
 
   @State private var showsProInformation = false
 
@@ -25,7 +26,8 @@ struct LabProgramView: View {
                 TerminalLessonView(
                   mission: mission,
                   progressStore: progressStore,
-                  onTryOwnNetwork: onTryOwnNetwork
+                  onTryOwnNetwork: onTryOwnNetwork,
+                  discoveredTargets: discoveredTargets
                 )
               } label: {
                 Label(mission.title, systemImage: "terminal")

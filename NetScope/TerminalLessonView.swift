@@ -11,6 +11,7 @@ struct TerminalLessonView: View {
   let mission: LabMission
   @ObservedObject var progressStore: LabProgressStore
   let onTryOwnNetwork: () -> Void
+  let discoveredTargets: [String]
 
   @State private var input = ""
   @State private var entries: [TerminalEntry] = []
@@ -43,6 +44,10 @@ struct TerminalLessonView: View {
       .background(Color(.systemGroupedBackground))
       .navigationTitle(mission.title)
       .navigationBarTitleDisplayMode(.inline)
+      .onAppear(perform: seedDiscoveredTarget)
+      .onChange(of: discoveredTargets) { _, _ in
+        seedDiscoveredTarget()
+      }
       .onChange(of: entries.count) {
         withAnimation { proxy.scrollTo("terminal-bottom", anchor: .bottom) }
       }
@@ -85,6 +90,28 @@ struct TerminalLessonView: View {
 
   private var prompt: some View {
     VStack(alignment: .leading, spacing: 10) {
+      if !quickDiscoveredTargets.isEmpty {
+        VStack(alignment: .leading, spacing: 8) {
+          Text("Wstaw wykryty adres")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+              ForEach(quickDiscoveredTargets, id: \.self) { target in
+                Button(target) {
+                  input = target
+                  UIAccessibility.post(notification: .announcement, argument: "Wstawiono \(target)")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .font(.caption.monospaced())
+              }
+            }
+          }
+        }
+      }
+
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text("lab $")
           .font(.body.monospaced().bold())
@@ -220,6 +247,76 @@ struct TerminalLessonView: View {
       copiedSolution = false
       UIAccessibility.post(notification: .announcement, argument: "Krok lekcji ukończony")
     }
+  }
+
+  private var quickDiscoveredTargets: [String] {
+    var unique: [String] = []
+    var seen: Set<String> = []
+
+    if let missionTarget = missionTargetsForQuickInsert,
+       isIPv4Address(missionTarget),
+       discoveredTargets.contains(missionTarget)
+    {
+      unique.append(missionTarget)
+      seen.insert(missionTarget)
+    }
+
+    for address in discoveredTargets where isIPv4Address(address) {
+      if seen.insert(address).inserted {
+        unique.append(address)
+      }
+      if unique.count >= 5 {
+        break
+      }
+    }
+
+    return unique
+  }
+
+  private var missionTargetsForQuickInsert: String? {
+    guard let step = activeStep else { return nil }
+    switch step.acceptedIntent {
+    case .inspect(let host, _, _):
+      return host
+    case .nmapDiagnostic(let host):
+      return host
+    case .connectSSH(_, let host):
+      return host
+    default:
+      return nil
+    }
+  }
+
+  private func seedDiscoveredTarget() {
+    guard input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    guard let step = activeStep else { return }
+    guard !isDiscoveryStep(step) else { return }
+
+    if let missionTarget = missionTargetsForQuickInsert,
+       isIPv4Address(missionTarget),
+       discoveredTargets.contains(missionTarget) {
+      input = missionTarget
+      return
+    }
+
+    if let firstTarget = quickDiscoveredTargets.first {
+      input = firstTarget
+    }
+  }
+
+  private func isIPv4Address(_ value: String) -> Bool {
+    let parts = value.split(separator: ".")
+    guard parts.count == 4 else { return false }
+
+    let octets = parts.compactMap { Int($0) }
+    return octets.count == 4 && octets.allSatisfy { (0...255).contains($0) }
+  }
+
+  private func isDiscoveryStep(_ step: LabStep) -> Bool {
+    if case .discover = step.acceptedIntent {
+      return true
+    }
+    return false
   }
 
   private func repeatMission() {
