@@ -21,7 +21,7 @@ struct VirtualNetwork: Equatable, Sendable {
   let hosts: [VirtualHost]
 
   func host(at address: String) -> VirtualHost? {
-    hosts.first { $0.address == address }
+    hosts.first { $0.address == address || $0.hostname == address }
   }
 
   func activeHosts(in cidr: String) -> [VirtualHost] {

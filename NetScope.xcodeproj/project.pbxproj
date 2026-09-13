@@ -42,6 +42,9 @@
 		E00000000000000000000032 /* VirtualNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* VirtualNetwork.swift */; };
 		E00000000000000000000033 /* VirtualLabEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000029 /* VirtualLabEngineTests.swift */; };
 		E00000000000000000000034 /* VirtualLabEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002A /* VirtualLabEngine.swift */; };
+		E00000000000000000000035 /* LabMissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002B /* LabMissionTests.swift */; };
+		E00000000000000000000036 /* LabMission.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002C /* LabMission.swift */; };
+		E00000000000000000000037 /* LabProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002D /* LabProgressStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +96,9 @@
 		F00000000000000000000028 /* VirtualNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualNetwork.swift; sourceTree = "<group>"; };
 		F00000000000000000000029 /* VirtualLabEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualLabEngineTests.swift; sourceTree = "<group>"; };
 		F0000000000000000000002A /* VirtualLabEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualLabEngine.swift; sourceTree = "<group>"; };
+		F0000000000000000000002B /* LabMissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabMissionTests.swift; sourceTree = "<group>"; };
+		F0000000000000000000002C /* LabMission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabMission.swift; sourceTree = "<group>"; };
+		F0000000000000000000002D /* LabProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabProgressStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +158,8 @@
 				F00000000000000000000026 /* BuildVariant.swift */,
 				F00000000000000000000028 /* VirtualNetwork.swift */,
 				F0000000000000000000002A /* VirtualLabEngine.swift */,
+				F0000000000000000000002C /* LabMission.swift */,
+				F0000000000000000000002D /* LabProgressStore.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -168,6 +176,7 @@
 				F0000000000000000000000A /* NetScopeTests.swift */,
 				F00000000000000000000027 /* VirtualNetworkTests.swift */,
 				F00000000000000000000029 /* VirtualLabEngineTests.swift */,
+				F0000000000000000000002B /* LabMissionTests.swift */,
 			);
 			path = NetScopeTests;
 			sourceTree = "<group>";
@@ -307,6 +316,8 @@
 				E00000000000000000000030 /* BuildVariant.swift in Sources */,
 				E00000000000000000000032 /* VirtualNetwork.swift in Sources */,
 				E00000000000000000000034 /* VirtualLabEngine.swift in Sources */,
+				E00000000000000000000036 /* LabMission.swift in Sources */,
+				E00000000000000000000037 /* LabProgressStore.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,
@@ -321,6 +332,7 @@
 				E00000000000000000000009 /* NetScopeTests.swift in Sources */,
 				E00000000000000000000031 /* VirtualNetworkTests.swift in Sources */,
 				E00000000000000000000033 /* VirtualLabEngineTests.swift in Sources */,
+				E00000000000000000000035 /* LabMissionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

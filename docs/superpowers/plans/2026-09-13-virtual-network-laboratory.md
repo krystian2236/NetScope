@@ -347,7 +347,7 @@ Po zgodzie użytkownika commit: `feat: add safe virtual command engine`.
 - Consumes: `VirtualCommandResult`.
 - Produces: `LabMission.demo`, `LabStep.accepts(command:result:)`, `LabProgressStore.complete(missionID:stepID:)`.
 
-- [ ] **Step 1: Dodaj test semantycznego zaliczenia i przywrócenia postępu**
+- [x] **Step 1: Dodaj test semantycznego zaliczenia i przywrócenia postępu**
 
 ```swift
 @Suite("Lab missions")
@@ -372,11 +372,11 @@ struct LabMissionTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź porażkę**
+- [x] **Step 2: Uruchom test i potwierdź porażkę**
 
 Run: test `LabMissionTests` na iPhonie 17.
 
-- [ ] **Step 3: Dodaj trzy misje demo**
+- [x] **Step 3: Dodaj trzy misje demo**
 
 ```swift
 struct LabStep: Identifiable, Equatable, Sendable {
@@ -435,7 +435,7 @@ struct LabMission: Identifiable, Equatable, Sendable {
 
 `LabMission.demo` zawiera identyfikatory `host-discovery`, `ports-services` i `ssh-basics`; wszystkie mają `isPro == false`. Intencje opisują odkrycie podsieci, skan TCP z wersjami oraz połączenie SSH do `mac.lab`.
 
-- [ ] **Step 4: Dodaj trwałość postępu**
+- [x] **Step 4: Dodaj trwałość postępu**
 
 ```swift
 struct CompletedLabStep: Codable, Hashable {
@@ -471,7 +471,7 @@ final class LabProgressStore: ObservableObject {
 
 Historia tekstu terminala pozostaje osobnym stanem sceny i nie trafia do analityki.
 
-- [ ] **Step 5: Uruchom testy misji, następnie `git diff --check`**
+- [x] **Step 5: Uruchom testy misji, następnie `git diff --check`**
 
 Expected: PASS i brak błędów whitespace.
 
