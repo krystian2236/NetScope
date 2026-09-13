@@ -249,7 +249,7 @@ git commit -m "feat: add virtual demo network"
 - Consumes: `VirtualNetwork`.
 - Produces: `VirtualLabEngine.execute(_:) -> VirtualCommandResult`, `VirtualCommandResult`, `VirtualExplanation`.
 
-- [ ] **Step 1: Dodaj testy obsługiwanych i zabronionych operacji**
+- [x] **Step 1: Dodaj testy obsługiwanych i zabronionych operacji**
 
 ```swift
 import Testing
@@ -283,11 +283,11 @@ struct VirtualLabEngineTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź porażkę z brakiem typu**
+- [x] **Step 2: Uruchom test i potwierdź porażkę z brakiem typu**
 
 Run: poprzednie polecenie z `-only-testing:NetScopeTests/VirtualLabEngineTests`.
 
-- [ ] **Step 3: Zaimplementuj zamknięty zestaw poleceń**
+- [x] **Step 3: Zaimplementuj zamknięty zestaw poleceń**
 
 ```swift
 struct VirtualExplanation: Equatable, Sendable {
@@ -327,7 +327,7 @@ nich. Obsługiwane układy to: `nmap -sn <cidr>`, `nmap -sT [-sV] [-p ports]
 zwraca `.invalid`; żadna metoda nie importuje `Network` ani nie wywołuje API
 sieciowego.
 
-- [ ] **Step 4: Dodaj test każdej jawnej gałęzi i uruchom cały suite interpretera**
+- [x] **Step 4: Dodaj test każdej jawnej gałęzi i uruchom cały suite interpretera**
 
 Expected: wszystkie testy PASS; wynik dla tego samego wejścia jest identyczny.
 
