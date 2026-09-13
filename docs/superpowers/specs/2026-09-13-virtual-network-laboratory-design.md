@@ -10,6 +10,13 @@ własnej prywatnej sieci.
 Pierwsze wydanie korzysta z modelu freemium: darmowe demo oraz jednorazowy zakup
 NetScope Pro. Subskrypcja nie wchodzi w zakres pierwszego wydania.
 
+Projekt udostępnia dwa jawnie rozdzielone warianty kompilacji. `NetScope App
+Store` jest jedynym wariantem przeznaczonym do dystrybucji i nie zawiera trybu
+deweloperskiego. `NetScope Developer` służy wyłącznie do lokalnej nauki i testów,
+ma osobny identyfikator aplikacji oraz zachowuje konstruktor poleceń, który nie
+blokuje poprawnych składniowo kombinacji, lecz pokazuje ich ryzyko. Żaden wariant
+nie wykonuje poleceń utworzonych przez konstruktor.
+
 ## Zasady bezpieczeństwa
 
 - Laboratorium nie uruchamia systemowego shella ani pobranego kodu.
@@ -20,6 +27,26 @@ NetScope Pro. Subskrypcja nie wchodzi w zakres pierwszego wydania.
 - Rzeczywisty skaner zachowuje ograniczenie do prywatnych i lokalnych adresów.
 - Aplikacja nie przechowuje haseł ani kluczy prywatnych.
 - Postęp i konfiguracja pozostają lokalnie na urządzeniu.
+- Funkcje wariantu Developer są wyłączone kompilacyjnie w buildzie App Store.
+
+## Warianty aplikacji
+
+### NetScope App Store
+
+- Bundle identifier: `pl.krystian.NetScope`.
+- Zawiera laboratorium offline, bezpieczny skaner prywatnej sieci i NetScope Pro.
+- Nie zawiera przełącznika, ukrytej trasy ani kodu uruchamiającego widoki
+  przeznaczone wyłącznie dla wariantu Developer.
+- Toolbox prezentuje wyłącznie funkcje zaakceptowane dla dystrybucji.
+
+### NetScope Developer
+
+- Bundle identifier: `pl.krystian.NetScope.dev`.
+- Nazwa na urządzeniu: `NetScope Dev`.
+- Jest instalowany lokalnie i nie jest wysyłany do App Store Connect.
+- Zachowuje edukacyjny konstruktor Nmap/Nuclei: ostrzeżenia są informacyjne,
+  polecenie pozostaje możliwe do skopiowania, a aplikacja go nie wykonuje.
+- Używa oddzielnego kontenera danych dzięki osobnemu bundle identifier.
 
 ## Architektura
 

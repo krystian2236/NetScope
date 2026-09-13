@@ -23,6 +23,17 @@ struct SessionRestorationTests {
     #expect(ISHWorkspaceRoute(rawValue: SSHShortcutID.commonPorts.rawValue)?.shortcutID == .commonPorts)
     #expect(ISHWorkspaceRoute(rawValue: ISHWorkspaceRoute.library.rawValue) == .library)
   }
+
+  @Test("Build variant has one compile-time identity")
+  func buildVariantIdentity() {
+    #if NETSCOPE_DEVELOPER_TOOLS
+    #expect(BuildVariant.current == .developer)
+    #expect(BuildVariant.current.includesDeveloperTools)
+    #else
+    #expect(BuildVariant.current == .appStore)
+    #expect(!BuildVariant.current.includesDeveloperTools)
+    #endif
+  }
 }
 
 @Suite("Toolbox workflow")

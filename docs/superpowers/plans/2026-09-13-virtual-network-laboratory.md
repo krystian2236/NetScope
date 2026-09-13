@@ -18,6 +18,10 @@
 - Prawdziwy skan jest osobną czynnością i zachowuje ograniczenie do prywatnych adresów.
 - Demo działa bez zakupu, konta oraz usługi chmurowej.
 - Pierwsza monetyzacja to jeden niekonsumowalny zakup `NetScope Pro`, nie subskrypcja.
+- Projekt ma schematy `NetScope App Store` i `NetScope Developer`.
+- `NetScope App Store` używa `pl.krystian.NetScope`; `NetScope Developer` używa `pl.krystian.NetScope.dev` i nazwy `NetScope Dev`.
+- Flaga `NETSCOPE_DEVELOPER_TOOLS` jest zdefiniowana wyłącznie dla wariantu Developer; nie istnieje runtime'owy przełącznik odblokowujący ten wariant.
+- Konstruktor Developer ostrzega, ale nie blokuje kopiowania poprawnych poleceń i nigdy ich nie wykonuje.
 - Nie zapisujemy haseł, tokenów ani kluczy prywatnych.
 - Zachowujemy iOS 17.0 jako minimalną wersję systemu.
 - Każdy commit wymaga osobnego, jednoznacznego zatwierdzenia użytkownika.
@@ -33,6 +37,7 @@
 - Create: `NetScope/LaboratoryView.swift` — lista lekcji, blokady Pro i wejście do terminala.
 - Create: `NetScope/EntitlementStore.swift` — stan demo/Pro i StoreKit 2.
 - Create: `NetScope/NetScope.storekit` — lokalna konfiguracja produktu testowego.
+- Create: `NetScope/BuildVariant.swift` — kompilacyjna identyfikacja wariantu bez przełącznika runtime.
 - Modify: `NetScope/AppShellView.swift` — wejście do laboratorium i przekazanie żądania skanu.
 - Modify: `NetScope/ScannerView.swift` — bezpieczny profil przekazany z lekcji.
 - Modify: `NetScope.xcodeproj/project.pbxproj` — źródła, testy i StoreKit configuration.
@@ -42,6 +47,87 @@
 - Create: `NetScopeTests/LabMissionTests.swift` — testy misji i postępu.
 - Create: `NetScopeTests/EntitlementStoreTests.swift` — testy dostępu demo/Pro.
 - Modify: `scripts/test-project-integrity.sh` — kontrola obecności nowych źródeł i produktu.
+
+---
+
+### Task 0: Rozdzielenie wariantów App Store i Developer
+
+**Files:**
+- Create: `NetScope/BuildVariant.swift`
+- Modify: `NetScope.xcodeproj/project.pbxproj`
+- Modify: `NetScopeTests/NetScopeTests.swift`
+
+**Interfaces:**
+- Consumes: flagę kompilatora `NETSCOPE_DEVELOPER_TOOLS`.
+- Produces: `BuildVariant.current`, `includesDeveloperTools`, dwa schematy i osobne identyfikatory bundle.
+
+- [ ] **Step 1: Dodaj test kontraktu aktywnego wariantu**
+
+```swift
+@Test("Build variant has one compile-time identity")
+func buildVariantIdentity() {
+  #if NETSCOPE_DEVELOPER_TOOLS
+  #expect(BuildVariant.current == .developer)
+  #expect(BuildVariant.current.includesDeveloperTools)
+  #else
+  #expect(BuildVariant.current == .appStore)
+  #expect(!BuildVariant.current.includesDeveloperTools)
+  #endif
+}
+```
+
+- [ ] **Step 2: Uruchom test i potwierdź porażkę z brakiem `BuildVariant`**
+
+```zsh
+xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:NetScopeTests/SessionRestorationTests CODE_SIGNING_ALLOWED=NO
+```
+
+- [ ] **Step 3: Dodaj kompilacyjny model wariantu**
+
+```swift
+enum BuildVariant: Equatable, Sendable {
+  case appStore
+  case developer
+
+  static var current: BuildVariant {
+    #if NETSCOPE_DEVELOPER_TOOLS
+    .developer
+    #else
+    .appStore
+    #endif
+  }
+
+  var includesDeveloperTools: Bool { self == .developer }
+}
+```
+
+- [ ] **Step 4: Dodaj konfigurację i współdzielone schematy**
+
+Utwórz konfiguracje `Debug-Developer` i `Release-Developer` jako kopie
+odpowiednich konfiguracji bazowych. Tylko one otrzymują
+`SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) NETSCOPE_DEVELOPER_TOOLS`,
+`PRODUCT_BUNDLE_IDENTIFIER = pl.krystian.NetScope.dev` i
+`INFOPLIST_KEY_CFBundleDisplayName = NetScope Dev`. Schemat `NetScope App Store`
+używa istniejących konfiguracji oraz `pl.krystian.NetScope`; schemat `NetScope
+Developer` używa konfiguracji Developer.
+
+- [ ] **Step 5: Uruchom test w obu schematach i sprawdź identyfikatory**
+
+```zsh
+xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope App Store' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope Developer' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+```
+
+Expected: oba zestawy PASS; wynik `-showBuildSettings` zwraca odpowiednio
+`pl.krystian.NetScope` i `pl.krystian.NetScope.dev`.
+
+- [ ] **Step 6: Zatrzymaj się przed commitem**
+
+Po zgodzie użytkownika commit: `chore: separate App Store and developer builds`.
 
 ---
 
