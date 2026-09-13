@@ -179,19 +179,75 @@ enum ISHCommandBuilder {
 }
 
 enum ISHTargetValidator {
+  /// Minimalny wymagany prefiks CIDR dla danego bloku prywatnego, tak aby
+  /// cała podsieć mieściła się w jego granicach (np. `10.0.0.0/7` wykracza
+  /// poza blok `10.0.0.0/8`, więc jest odrzucane).
+  private static func minimumPrefixLength(forFirstOctet first: Int, secondOctet second: Int) -> Int? {
+    if first == 10 {
+      return 8
+    }
+    if first == 172, (16...31).contains(second) {
+      return 12
+    }
+    if first == 192, second == 168 {
+      return 16
+    }
+    if first == 169, second == 254 {
+      return 16
+    }
+    return nil
+  }
+
+  /// Sprawdza, czy `octets` reprezentują adres należący do jednego z prywatnych
+  /// bloków (10/8, 172.16/12, 192.168/16, 169.254/16), zwracając minimalny
+  /// prefiks wymagany dla tego bloku, jeśli tak.
+  private static func privateBlockMinimumPrefix(for octets: [Int]) -> Int? {
+    guard octets.count == 4, octets.allSatisfy({ (0...255).contains($0) }) else {
+      return nil
+    }
+    return minimumPrefixLength(forFirstOctet: octets[0], secondOctet: octets[1])
+  }
+
+  /// Akceptuje pojedynczy adres IPv4 z opcjonalnym prefiksem CIDR, o ile cała
+  /// podsieć mieści się w jednym z prywatnych bloków. Odrzuca brakujący/
+  /// niepoprawny/wielokrotny separator `/`, prefiksy spoza 0–32 oraz prefiksy
+  /// zbyt krótkie dla danego bloku (np. `10.0.0.0/7`).
   static func isPrivate(_ target: String) -> Bool {
-    let address = target.split(separator: "/", maxSplits: 1).first.map(String.init) ?? target
-    let octets = address.split(separator: ".").compactMap { Int($0) }
-    guard octets.count == 4,
-      octets.allSatisfy({ (0...255).contains($0) })
+    let parts = target.split(separator: "/", omittingEmptySubsequences: false)
+    guard parts.count == 1 || parts.count == 2 else {
+      return false
+    }
+
+    let octets = parts[0].split(separator: ".").compactMap { Int($0) }
+    guard let minimumPrefix = privateBlockMinimumPrefix(for: octets) else {
+      return false
+    }
+
+    guard parts.count == 2 else {
+      return true
+    }
+
+    let prefixText = parts[1]
+    guard !prefixText.isEmpty,
+      prefixText.allSatisfy({ $0.isNumber }),
+      let prefixLength = Int(prefixText),
+      (0...32).contains(prefixLength)
     else {
       return false
     }
 
-    return octets[0] == 10
-      || (octets[0] == 172 && (16...31).contains(octets[1]))
-      || (octets[0] == 192 && octets[1] == 168)
-      || (octets[0] == 169 && octets[1] == 254)
+    return prefixLength >= minimumPrefix
+  }
+
+  /// Akceptuje wyłącznie pojedynczy prywatny adres IPv4 bez zapisu CIDR.
+  /// Przeznaczone dla poleceń (np. odwrotny DNS), które operują na
+  /// pojedynczym hoście, a nie na całej podsieci.
+  static func isPrivateHost(_ target: String) -> Bool {
+    guard !target.contains("/") else {
+      return false
+    }
+    let octets = target.split(separator: ".").compactMap { Int($0) }
+    return privateBlockMinimumPrefix(for: octets) != nil
   }
 }
 

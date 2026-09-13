@@ -14,11 +14,20 @@ derived_data="$(mktemp -d /private/tmp/netscope-integrity.XXXXXX)"
 build_log="$derived_data/xcodebuild.log"
 trap 'rm -rf -- "$derived_data"' EXIT
 
-grep -q 'title: "iSH + Mac przez SSH"' "$repo_root/NetScope/DashboardView.swift"
 if grep -q 'Text("Szybkie działania")' "$repo_root/NetScope/DashboardView.swift"; then
   print -u2 "Dashboard nadal dubluje dolną nawigację"
   exit 1
 fi
+
+for required_source in NmapCatalog NucleiCatalog ToolLearningView; do
+  grep -q "$required_source.swift" "$repo_root/NetScope.xcodeproj/project.pbxproj" || {
+    print -u2 "Brak $required_source.swift w projekcie Xcode"
+    exit 1
+  }
+done
+
+grep -q 'tool: NmapCatalog.definition' "$repo_root/NetScope/ToolboxView.swift"
+grep -q 'tool: NucleiCatalog.definition' "$repo_root/NetScope/ToolboxView.swift"
 
 build_bundle() {
   xcodebuild \

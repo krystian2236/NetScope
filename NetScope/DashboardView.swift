@@ -28,7 +28,6 @@ struct DashboardView: View {
         LazyVStack(spacing: 12) {
           networkHeader
           metrics
-          quickActions
           scanStatus
           history
           InfoBanner(
@@ -117,31 +116,6 @@ struct DashboardView: View {
         tint: reviewCount > 0 ? .orange : .green
       )
     }
-  }
-
-  private var quickActions: some View {
-    NavigationLink {
-      SSHShortcutLibraryView(
-        context: scanner.context,
-        devices: scanner.devices,
-        preferredShortcut: nil
-      )
-    } label: {
-      ToolCard(
-        icon: "terminal.fill",
-        title: "iSH + Mac przez SSH",
-        subtitle: "Bezpieczne skróty do skopiowania na iPhonie"
-      ) {
-        HStack {
-          Text("Wymaga iSH oraz dostępu SSH do Twojego Maca")
-          Spacer()
-          Image(systemName: "chevron.right")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      }
-    }
-    .buttonStyle(.plain)
   }
 
   @ViewBuilder

@@ -3,6 +3,270 @@ import Testing
 
 @testable import NetScope
 
+@Suite("Session restoration")
+struct SessionRestorationTests {
+  @Test("Unknown tab falls back to dashboard")
+  func unknownTabFallsBackToDashboard() {
+    #expect(AppTab.restored(from: 999) == .dashboard)
+  }
+
+  @Test("Primary navigation keeps Toolbox in the center")
+  func primaryNavigationKeepsToolboxInTheCenter() {
+    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon])
+    #expect(AppTab.restored(from: 1) == .dashboard)
+    #expect(AppTab.restored(from: 2) == .dashboard)
+    #expect(AppTab.restored(from: 4) == .dashboard)
+  }
+
+  @Test("Shortcut route restores the selected command")
+  func shortcutRouteRestoresSelectedCommand() {
+    #expect(ISHWorkspaceRoute(rawValue: SSHShortcutID.commonPorts.rawValue)?.shortcutID == .commonPorts)
+    #expect(ISHWorkspaceRoute(rawValue: ISHWorkspaceRoute.library.rawValue) == .library)
+  }
+}
+
+@Suite("Toolbox workflow")
+struct ToolboxWorkflowTests {
+  @Test("Toolbox exposes Nmap and Nuclei")
+  func toolboxExposesBothLearningTools() {
+    #expect(ToolboxEntry.allCases == [.reconnaissance, .nuclei])
+  }
+}
+
+@Suite("Tool command catalog")
+struct ToolCommandCatalogTests {
+  private let tool = ToolDefinition(
+    id: "demo",
+    executable: "demo",
+    title: "Demo",
+    helpVersion: "1.0",
+    reviewedAt: "2026-09-12",
+    categories: [
+      .init(id: "target", title: "Cel", subtitle: "Adres", icon: "scope"),
+      .init(id: "output", title: "Wyjście", subtitle: "Format", icon: "text.alignleft"),
+    ],
+    options: [
+      .init(
+        id: "target",
+        categoryID: "target",
+        flags: ["-u", "-target"],
+        title: "Cel",
+        summary: "Wybiera cel.",
+        valueKind: .text(example: "https://example.com"),
+        risk: .standard,
+        order: 10
+      ),
+      .init(
+        id: "json",
+        categoryID: "output",
+        flags: ["-j", "-jsonl"],
+        title: "JSONL",
+        summary: "Włącza JSONL.",
+        valueKind: .none,
+        risk: .standard,
+        order: 20
+      ),
+    ]
+  )
+
+  @Test("Builder orders and quotes selected fragments")
+  func builderOrdersAndQuotesSelectedFragments() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["json", "target"],
+      values: ["target": "https://example.com/a'b"]
+    )
+    let draft = ToolCommandBuilder.build(tool: tool, selection: selection)
+
+    #expect(draft.command == "demo -u 'https://example.com/a'\"'\"'b' -j")
+    #expect(draft.errors.isEmpty)
+  }
+
+  @Test("Missing value remains visible and is excluded")
+  func missingValueRemainsVisibleAndIsExcluded() {
+    let selection = ToolSelection(selectedOptionIDs: ["target", "json"], values: [:])
+    let draft = ToolCommandBuilder.build(tool: tool, selection: selection)
+
+    #expect(draft.command == "demo -j")
+    #expect(draft.fragments.first { $0.optionID == "target" }?.role == .invalid)
+    #expect(draft.errors == ["Uzupełnij wartość dla -u."])
+  }
+
+  @Test("Removing an option clears its transient value")
+  func removingOptionClearsTransientValue() {
+    var selection = ToolSelection(
+      selectedOptionIDs: ["target"],
+      values: ["target": "https://example.com"]
+    )
+
+    selection.toggle(optionID: "target")
+
+    #expect(selection.selectedOptionIDs.isEmpty)
+    #expect(selection.values["target"] == nil)
+  }
+
+  @Test("Builder supports attached and equals option values")
+  func builderSupportsAttachedAndEqualsValues() {
+    let tool = ToolDefinition(
+      id: "syntax",
+      executable: "tool",
+      title: "Tool",
+      helpVersion: "1",
+      reviewedAt: "2026-09-12",
+      categories: [.init(id: "options", title: "Opcje", subtitle: "", icon: "gear")],
+      options: [
+        .init(id: "timing", categoryID: "options", flags: ["-T"], title: "Tempo", summary: "Tempo.", valueKind: .integer(range: 0...5, example: "4"), valuePlacement: .attached, risk: .standard, order: 10),
+        .init(id: "script", categoryID: "options", flags: ["--script"], title: "Skrypt", summary: "Skrypt.", valueKind: .text(example: "default"), valuePlacement: .equals, risk: .standard, order: 20),
+      ]
+    )
+    let selection = ToolSelection(
+      selectedOptionIDs: ["timing", "script"],
+      values: ["timing": "4", "script": "default"]
+    )
+
+    #expect(ToolCommandBuilder.build(tool: tool, selection: selection).command == "tool -T4 --script='default'")
+  }
+
+  @Test("Conflicting options stay visible but are excluded")
+  func conflictingOptionsStayVisibleButAreExcluded() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["follow-redirects", "disable-redirects", "target"],
+      values: ["target": "https://example.com"]
+    )
+    let draft = ToolCommandBuilder.build(tool: NucleiCatalog.definition, selection: selection)
+
+    #expect(draft.command == "nuclei -u 'https://example.com'")
+    #expect(draft.fragments.filter { $0.role == .invalid }.count == 2)
+  }
+
+  @Test("Public target stays copyable and receives a warning")
+  func publicTargetStaysCopyableWithWarning() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["tcp-connect", "target"],
+      values: ["target": "scanme.nmap.org"]
+    )
+    let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
+
+    #expect(draft.command == "nmap -sT 'scanme.nmap.org'")
+    #expect(draft.warnings.contains { $0.contains("zgodą właściciela") })
+    #expect(draft.fragments.last?.role == .caution)
+  }
+
+  @Test("Dependent option is excluded until its base option is selected")
+  func dependentOptionNeedsBaseOption() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["version-light", "target"],
+      values: ["target": "192.168.1.20"]
+    )
+    let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
+
+    #expect(draft.command == "nmap '192.168.1.20'")
+    #expect(draft.fragments.first { $0.optionID == "version-light" }?.role == .invalid)
+  }
+
+  @Test("Invalid Nmap ports stay visible but are excluded")
+  func invalidNmapPortsStayVisibleButAreExcluded() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["tcp-connect", "ports", "target"],
+      values: ["ports": "22,wrong", "target": "192.168.1.20"]
+    )
+    let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
+
+    #expect(draft.command == "nmap -sT '192.168.1.20'")
+    #expect(draft.fragments.first { $0.optionID == "ports" }?.role == .invalid)
+  }
+}
+
+@Suite("Nuclei catalog")
+struct NucleiCatalogTests {
+  @Test("Catalog follows Kali help categories")
+  func categoriesFollowKaliHelp() {
+    #expect(NucleiCatalog.definition.helpVersion == "3.11.1")
+    #expect(
+      NucleiCatalog.definition.categories.map(\.id)
+        == [
+          "common", "target", "target-format", "templates", "filtering", "output",
+          "configurations", "interactsh", "fuzzing", "uncover", "rate-limit",
+          "optimizations", "headless", "debug", "update", "honeypot", "statistics",
+          "cloud", "authentication",
+        ]
+    )
+  }
+
+  @Test("Representative aliases and value kinds are preserved")
+  func aliasesAndValuesArePreserved() {
+    let options = Dictionary(
+      uniqueKeysWithValues: NucleiCatalog.definition.options.map { ($0.id, $0) }
+    )
+
+    #expect(options["target"]?.flags == ["-u", "-target"])
+    #expect(options["severity"]?.flags == ["-s", "-severity"])
+    #expect(
+      options["rate-limit"]?.valueKind
+        == .integer(range: 1...10_000, example: "50")
+    )
+    #expect(options["interactsh-token"]?.isSecret == true)
+  }
+
+  @Test("Advanced network features explain their risk")
+  func advancedNetworkFeaturesExplainTheirRisk() {
+    for id in ["dast", "uncover", "dashboard", "prompt", "allow-local-file-access"] {
+      guard let option = NucleiCatalog.definition.options.first(where: { $0.id == id }) else {
+        Issue.record("Brak opcji \(id)")
+        continue
+      }
+      if case .advanced(let reason) = option.risk {
+        #expect(!reason.isEmpty)
+      } else {
+        Issue.record("Opcja \(id) nie ma poziomu zaawansowanego")
+      }
+    }
+  }
+}
+
+@Suite("Nmap catalog")
+struct NmapCatalogTests {
+  @Test("Usage header maps each placeholder to the correct category")
+  func usageHeaderMapsPlaceholdersToCategories() {
+    #expect(
+      NmapCatalog.definition.usageParts
+        == [
+          .literal("nmap"),
+          .category(label: "[Scan Type(s)]", categoryID: "scan"),
+          .category(label: "[Options]", categoryID: "discovery"),
+          .category(label: "{target specification}", categoryID: "target"),
+        ]
+    )
+  }
+
+  @Test("Catalog emits current discovery flags")
+  func currentDiscoveryFlags() {
+    let options = Dictionary(
+      uniqueKeysWithValues: NmapCatalog.definition.options.map { ($0.id, $0) }
+    )
+
+    #expect(options["ping-scan"]?.flags.first == "-sn")
+    #expect(options["skip-discovery"]?.flags.first == "-Pn")
+    #expect(NmapCatalog.definition.options.flatMap(\.flags).contains("-sP") == false)
+    #expect(NmapCatalog.definition.options.flatMap(\.flags).contains("-P0") == false)
+  }
+
+  @Test("Existing common command remains unchanged")
+  func commonCommandRemainsUnchanged() {
+    let selection = ToolSelection(
+      selectedOptionIDs: [
+        "tcp-connect", "skip-discovery", "open-only", "service-detection", "ports",
+        "target",
+      ],
+      values: ["ports": "22,80", "target": "192.168.1.20"]
+    )
+
+    #expect(
+      ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection).command
+        == "nmap -sT -Pn --open -sV -p '22,80' '192.168.1.20'"
+    )
+  }
+}
+
 final class NetScopeTests: XCTestCase {
   func testPrivateNetworkRecognition() {
     XCTAssertTrue(
@@ -191,6 +455,32 @@ final class NetScopeTests: XCTestCase {
     XCTAssertFalse(ISHTargetValidator.isPrivate("example.com"))
   }
 
+  func testISHTargetValidationRejectsCIDRPrefixesShorterThanPrivateBlock() {
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/7"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("10.0.0.0/8"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("172.16.0.0/11"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("172.16.0.0/12"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("192.168.0.0/15"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("192.168.0.0/16"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("169.254.0.0/15"))
+    XCTAssertTrue(ISHTargetValidator.isPrivate("169.254.0.0/16"))
+  }
+
+  func testISHTargetValidationRejectsMalformedCIDRSuffixes() {
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/33"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/999"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/abc"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/"))
+    XCTAssertFalse(ISHTargetValidator.isPrivate("10.0.0.0/8/16"))
+  }
+
+  func testISHTargetValidationHostOnlyRejectsCIDR() {
+    XCTAssertTrue(ISHTargetValidator.isPrivateHost("192.168.1.20"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("192.168.1.20/24"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("192.168.1.0/24"))
+    XCTAssertFalse(ISHTargetValidator.isPrivateHost("8.8.8.8"))
+  }
+
   func testISHCommandUsesUnprivilegedConnectScan() {
     let command = ISHCommandBuilder.command(
       target: "192.168.1.40",
@@ -255,6 +545,14 @@ final class NetScopeTests: XCTestCase {
     XCTAssertEqual(result, .blocked("Użytkownik lub host zawiera niedozwolone znaki."))
   }
 
+  func testSSHConnectionBuildsStandardURLForExternalClient() {
+    let result = SSHShortcutLibrary.connectionURL(
+      context: SSHShortcutContext(username: "krystian", host: "MacBook.local", target: nil)
+    )
+
+    XCTAssertEqual(result, URL(string: "ssh://krystian@MacBook.local"))
+  }
+
   func testSSHDiscoveryRejectsPublicTarget() {
     let result = SSHShortcutLibrary.resolve(
       .discoverHosts,
@@ -282,11 +580,50 @@ final class NetScopeTests: XCTestCase {
     XCTAssertEqual(SSHShortcutSearch.filter(all, query: "").count, all.count)
   }
 
+  func testSSHShortcutSearchLimitsResultsToSelectedCategory() {
+    let all = SSHShortcutLibrary.shortcuts
+
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, category: .ports, query: "").map(\.id),
+      [.commonPorts, .serviceVersions, .detailedHost]
+    )
+    XCTAssertEqual(
+      SSHShortcutSearch.filter(all, category: .networkInfo, query: "DNS").map(\.id),
+      [.dnsServers]
+    )
+  }
+
   func testNmapStepsMapToOrderedSSHShortcuts() {
     XCTAssertEqual(
       NmapGuideStep.allCases.map(\.shortcutID),
       [.discoverHosts, .reverseDNS, .commonPorts, .serviceVersions, .detailedHost]
     )
+  }
+
+  func testSSHReverseDNSRejectsSubnetTarget() {
+    let result = SSHShortcutLibrary.resolve(
+      .reverseDNS,
+      context: SSHShortcutContext(
+        username: "krystian",
+        host: "mac.local",
+        target: "192.168.1.0/24"
+      )
+    )
+
+    XCTAssertEqual(result, .blocked("Wybierz pojedynczy prywatny adres (bez podsieci)."))
+  }
+
+  func testSSHReverseDNSAcceptsSingleHostTarget() {
+    let result = SSHShortcutLibrary.resolve(
+      .reverseDNS,
+      context: SSHShortcutContext(
+        username: "krystian",
+        host: "mac.local",
+        target: "192.168.1.20"
+      )
+    )
+
+    XCTAssertEqual(result, .command("dscacheutil -q host -a ip_address '192.168.1.20'"))
   }
 }
 

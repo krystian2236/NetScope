@@ -30,6 +30,13 @@
 		E00000000000000000000020 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001C /* PrivacyInfo.xcprivacy */; };
 		E00000000000000000000021 /* SSHShortcutLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001D /* SSHShortcutLibrary.swift */; };
 		E00000000000000000000022 /* SSHShortcutLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001E /* SSHShortcutLibraryView.swift */; };
+		E00000000000000000000023 /* ToolboxModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001F /* ToolboxModel.swift */; };
+		E00000000000000000000024 /* ToolboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000020 /* ToolboxView.swift */; };
+		E00000000000000000000025 /* ToolboxCatalogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000021 /* ToolboxCatalogModel.swift */; };
+		E00000000000000000000026 /* ToolCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000022 /* ToolCommandBuilder.swift */; };
+		E00000000000000000000027 /* NucleiCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000023 /* NucleiCatalog.swift */; };
+		E00000000000000000000028 /* ToolLearningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* ToolLearningView.swift */; };
+		E00000000000000000000029 /* NmapCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* NmapCatalog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +76,13 @@
 		F0000000000000000000001C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F0000000000000000000001D /* SSHShortcutLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHShortcutLibrary.swift; sourceTree = "<group>"; };
 		F0000000000000000000001E /* SSHShortcutLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHShortcutLibraryView.swift; sourceTree = "<group>"; };
+		F0000000000000000000001F /* ToolboxModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxModel.swift; sourceTree = "<group>"; };
+		F00000000000000000000020 /* ToolboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxView.swift; sourceTree = "<group>"; };
+		F00000000000000000000021 /* ToolboxCatalogModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxCatalogModel.swift; sourceTree = "<group>"; };
+		F00000000000000000000022 /* ToolCommandBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCommandBuilder.swift; sourceTree = "<group>"; };
+		F00000000000000000000023 /* NucleiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NucleiCatalog.swift; sourceTree = "<group>"; };
+		F00000000000000000000024 /* ToolLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolLearningView.swift; sourceTree = "<group>"; };
+		F00000000000000000000025 /* NmapCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NmapCatalog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +132,13 @@
 				F0000000000000000000001A /* ISHToolkitView.swift */,
 				F0000000000000000000001D /* SSHShortcutLibrary.swift */,
 				F0000000000000000000001E /* SSHShortcutLibraryView.swift */,
+				F0000000000000000000001F /* ToolboxModel.swift */,
+				F00000000000000000000020 /* ToolboxView.swift */,
+				F00000000000000000000021 /* ToolboxCatalogModel.swift */,
+				F00000000000000000000022 /* ToolCommandBuilder.swift */,
+				F00000000000000000000023 /* NucleiCatalog.swift */,
+				F00000000000000000000024 /* ToolLearningView.swift */,
+				F00000000000000000000025 /* NmapCatalog.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -261,6 +282,13 @@
 				E00000000000000000000017 /* ISHToolkitView.swift in Sources */,
 				E00000000000000000000021 /* SSHShortcutLibrary.swift in Sources */,
 				E00000000000000000000022 /* SSHShortcutLibraryView.swift in Sources */,
+				E00000000000000000000023 /* ToolboxModel.swift in Sources */,
+				E00000000000000000000024 /* ToolboxView.swift in Sources */,
+				E00000000000000000000025 /* ToolboxCatalogModel.swift in Sources */,
+				E00000000000000000000026 /* ToolCommandBuilder.swift in Sources */,
+				E00000000000000000000027 /* NucleiCatalog.swift in Sources */,
+				E00000000000000000000028 /* ToolLearningView.swift in Sources */,
+				E00000000000000000000029 /* NmapCatalog.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,
