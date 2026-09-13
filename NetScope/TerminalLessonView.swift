@@ -211,7 +211,7 @@ struct TerminalLessonView: View {
 
     let step = activeStep
     let result = engine.execute(command)
-    entries.append(TerminalEntry(command: command, result: result))
+    entries.append(TerminalEntry(command: LabCommandSanitizer.redactForHistory(command), result: result))
 
     if let step, step.accepts(command: command, result: result) {
       progressStore.complete(missionID: mission.id, stepID: step.id)

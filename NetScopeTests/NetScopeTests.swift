@@ -12,7 +12,7 @@ struct SessionRestorationTests {
 
   @Test("Primary navigation keeps Toolbox in the center")
   func primaryNavigationKeepsToolboxInTheCenter() {
-    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon])
+    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon, .cipherPath])
     #expect(AppTab.restored(from: 1) == .dashboard)
     #expect(AppTab.restored(from: 2) == .dashboard)
     #expect(AppTab.restored(from: 4) == .dashboard)

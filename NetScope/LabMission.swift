@@ -6,19 +6,25 @@ struct LabStep: Identifiable, Equatable, Sendable {
   let hints: [String]
   let acceptedIntent: LabCommandIntent
   let explanation: String
+  var expectsFailure = false
 
   func accepts(command: String, result: VirtualCommandResult) -> Bool {
-    result.status == .success && LabCommandIntent.parse(command) == acceptedIntent
+    let expectedStatus: VirtualCommandResult.Status = expectsFailure ? .invalid : .success
+    return result.status == expectedStatus && LabCommandIntent.parse(command) == acceptedIntent
   }
 }
 
 enum LabCommandIntent: Equatable, Sendable {
   case discover(cidr: String)
   case inspect(host: String, ports: [UInt16], versions: Bool)
+  case nmapDiagnostic(host: String)
+  case nuclei(target: String, tags: [String])
+  case dig(name: String, type: String, server: String?, short: Bool)
+  case curl(method: String, url: String, headers: [String], body: String?, head: Bool, follow: Bool, timeout: Int?)
   case connectSSH(user: String, host: String)
 
   static func parse(_ command: String) -> LabCommandIntent? {
-    let tokens = command.split(whereSeparator: \.isWhitespace).map(String.init)
+    let tokens = LabCommandTokenizer.tokenize(command)
     if tokens.count == 3, tokens[0] == "nmap", tokens[1] == "-sn" {
       return .discover(cidr: tokens[2])
     }
@@ -30,7 +36,101 @@ enum LabCommandIntent: Equatable, Sendable {
       guard !user.isEmpty, !host.isEmpty else { return nil }
       return .connectSSH(user: user, host: host)
     }
+    if let nuclei = parseNuclei(tokens) { return nuclei }
+    if let dig = parseDig(tokens) { return dig }
+    if let curl = parseCurl(tokens) { return curl }
+    if tokens.first == "nmap",
+       tokens.contains("-sT"), tokens.contains("-Pn"),
+       tokens.contains("--open"), tokens.contains("--reason"),
+       let host = tokens.last, !host.hasPrefix("-")
+    {
+      return .nmapDiagnostic(host: host)
+    }
     return parseInspection(tokens)
+  }
+
+  private static func parseNuclei(_ tokens: [String]) -> LabCommandIntent? {
+    guard tokens.first == "nuclei" else { return nil }
+    var target: String?
+    var tags: [String] = []
+    var index = 1
+    while index < tokens.count {
+      switch tokens[index] {
+      case "-u", "-url":
+        index += 1
+        guard index < tokens.count else { return nil }
+        target = tokens[index]
+      case "-tags":
+        index += 1
+        guard index < tokens.count else { return nil }
+        tags = tokens[index].split(separator: ",").map(String.init).sorted()
+      default: return nil
+      }
+      index += 1
+    }
+    guard let target else { return nil }
+    return .nuclei(target: target, tags: tags)
+  }
+
+  private static func parseDig(_ tokens: [String]) -> LabCommandIntent? {
+    guard tokens.first == "dig" else { return nil }
+    if tokens.count == 3, tokens[1] == "-x" {
+      return .dig(name: tokens[2], type: "PTR", server: nil, short: false)
+    }
+    var server: String?
+    var short = false
+    var values: [String] = []
+    for token in tokens.dropFirst() {
+      if token.hasPrefix("@") {
+        guard server == nil, token.count > 1 else { return nil }
+        server = String(token.dropFirst())
+      } else if token == "+short" {
+        short = true
+      } else {
+        values.append(token)
+      }
+    }
+    guard values.count == 2 else { return nil }
+    return .dig(name: values[0], type: values[1].uppercased(), server: server, short: short)
+  }
+
+  private static func parseCurl(_ tokens: [String]) -> LabCommandIntent? {
+    guard tokens.first == "curl" else { return nil }
+    var method = "GET"
+    var headers: [String] = []
+    var body: String?
+    var head = false
+    var follow = false
+    var timeout: Int?
+    var url: String?
+    var index = 1
+    while index < tokens.count {
+      switch tokens[index] {
+      case "-X", "--request":
+        index += 1; guard index < tokens.count else { return nil }
+        method = tokens[index].uppercased()
+      case "-H", "--header":
+        index += 1; guard index < tokens.count else { return nil }
+        headers.append(tokens[index])
+      case "-d", "--data":
+        index += 1; guard index < tokens.count else { return nil }
+        body = tokens[index]
+        if method == "GET" { method = "POST" }
+      case "-I", "--head":
+        head = true; method = "HEAD"
+      case "-L", "--location":
+        follow = true
+      case "--max-time":
+        index += 1; guard index < tokens.count, let value = Int(tokens[index]) else { return nil }
+        timeout = value
+      default:
+        guard !tokens[index].hasPrefix("-"), url == nil else { return nil }
+        url = tokens[index]
+      }
+      index += 1
+    }
+    guard let url else { return nil }
+    return .curl(method: method, url: url, headers: headers, body: body, head: head, follow: follow, timeout: timeout)
   }
 
   private static func parseInspection(_ tokens: [String]) -> LabCommandIntent? {
@@ -122,6 +222,63 @@ struct LabCommandPresentation: Equatable, Sendable {
       )
       command = commandParts.joined(separator: " ")
       segments = commandSegments
+    case .nmapDiagnostic(let host):
+      command = "nmap -sT -Pn --open --reason \(host)"
+      segments = [
+        .init(category: .tool, value: "nmap", explanation: "Program do rozpoznawania sieci i usług."),
+        .init(category: .scanType, value: "-sT", explanation: "Pełne połączenie TCP bez surowych pakietów."),
+        .init(category: .option, value: "-Pn", explanation: "Pomija wcześniejsze wykrywanie dostępności hosta."),
+        .init(category: .option, value: "--open", explanation: "Ogranicza wynik do otwartych portów."),
+        .init(category: .option, value: "--reason", explanation: "Wyjaśnia przyczynę rozpoznanego stanu."),
+        .init(category: .target, value: host, explanation: "Host w bezpiecznej sieci demonstracyjnej."),
+      ]
+    case .nuclei(let target, let tags):
+      command = "nuclei -u \(target) -tags \(tags.joined(separator: ","))"
+      segments = [
+        .init(category: .tool, value: "nuclei", explanation: "Silnik kontroli opartych na szablonach."),
+        .init(category: .target, value: target, explanation: "Wirtualny serwer HTTP w laboratorium."),
+        .init(category: .option, value: "-tags \(tags.joined(separator: ","))", explanation: "Ogranicza szablony do wybranej kategorii."),
+      ]
+    case .dig(let name, let type, let server, let short):
+      var parts = ["dig"]
+      var commandSegments = [
+        LabCommandSegment(category: .tool, value: "dig", explanation: "Program do wykonywania zapytań DNS."),
+      ]
+      if let server {
+        parts.append("@\(server)")
+        commandSegments.append(.init(category: .option, value: "@\(server)", explanation: "Wybiera serwer DNS w sieci demonstracyjnej."))
+      }
+      parts.append(contentsOf: [name, type])
+      commandSegments.append(.init(category: .target, value: name, explanation: "Nazwa sprawdzana w lokalnej strefie demonstracyjnej."))
+      commandSegments.append(.init(category: .option, value: type, explanation: "Typ rekordu DNS."))
+      if short {
+        parts.append("+short")
+        commandSegments.append(.init(category: .option, value: "+short", explanation: "Pokazuje wyłącznie wartości odpowiedzi."))
+      }
+      command = parts.joined(separator: " ")
+      segments = commandSegments
+    case .curl(let method, let url, let headers, let body, let head, let follow, let timeout):
+      var parts = ["curl"]
+      var commandSegments = [LabCommandSegment(category: .tool, value: "curl", explanation: "Klient żądań HTTP w laboratorium.")]
+      if method != "GET" && !head {
+        parts.append(contentsOf: ["-X", method])
+        commandSegments.append(.init(category: .scanType, value: method, explanation: "Metoda żądania HTTP."))
+      }
+      for header in headers {
+        parts.append(contentsOf: ["-H", "'\(header)'"])
+        commandSegments.append(.init(category: .option, value: "-H", explanation: "Dodaje nagłówek bez zapisywania sekretów."))
+      }
+      if let body {
+        parts.append(contentsOf: ["-d", "'\(body)'"])
+        commandSegments.append(.init(category: .option, value: "-d", explanation: "Dodaje ciało żądania."))
+      }
+      if head { parts.append("-I") }
+      if follow { parts.append("-L") }
+      if let timeout { parts.append(contentsOf: ["--max-time", String(timeout)]) }
+      parts.append(url)
+      commandSegments.append(.init(category: .target, value: url, explanation: "Lokalny endpoint wirtualnej sieci."))
+      command = parts.joined(separator: " ")
+      segments = commandSegments
     case .connectSSH(let user, let host):
       command = "ssh \(user)@\(host)"
       segments = [
@@ -130,6 +287,28 @@ struct LabCommandPresentation: Equatable, Sendable {
         .init(category: .target, value: host, explanation: "Host, z którym ma zostać nawiązane połączenie."),
       ]
     }
+  }
+}
+
+enum LabCommandTokenizer {
+  static func tokenize(_ command: String) -> [String] {
+    var tokens: [String] = []
+    var current = ""
+    var quote: Character?
+    for character in command {
+      if let activeQuote = quote {
+        if character == activeQuote { quote = nil } else { current.append(character) }
+      } else if character == "'" || character == "\"" {
+        quote = character
+      } else if character.isWhitespace {
+        if !current.isEmpty { tokens.append(current); current = "" }
+      } else {
+        current.append(character)
+      }
+    }
+    guard quote == nil else { return [] }
+    if !current.isEmpty { tokens.append(current) }
+    return tokens
   }
 }
 

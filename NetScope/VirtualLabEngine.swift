@@ -22,22 +22,24 @@ struct VirtualLabEngine: Sendable {
   let network: VirtualNetwork
 
   func execute(_ input: String) -> VirtualCommandResult {
-    let tokens = input.split(whereSeparator: \.isWhitespace).map(String.init)
+    let tokens = LabCommandTokenizer.tokenize(input)
     guard let executable = tokens.first else {
-      return invalid("Wpisz polecenie.", hint: "Dostępne: nmap, ping, dig i ssh.")
+      return invalid("Wpisz polecenie.", hint: "Dostępne: nmap, nuclei, ping, dig i ssh.")
     }
 
     let arguments = Array(tokens.dropFirst())
     return switch executable.lowercased() {
     case "nmap": resolveNmap(arguments)
+    case "nuclei": resolveNuclei(arguments)
     case "ping": resolvePing(arguments)
     case "dig": resolveDig(arguments)
+    case "curl": resolveCurl(arguments)
     case "ssh": resolveSSH(arguments)
     default:
       VirtualCommandResult(
         status: .unsupported,
         output: "Laboratorium nie wykonuje tego polecenia.",
-        hint: "Dostępne: nmap, ping, dig i ssh.",
+        hint: "Dostępne: nmap, nuclei, ping, dig i ssh.",
         explanations: []
       )
     }
@@ -73,6 +75,7 @@ struct VirtualLabEngine: Sendable {
     }
 
     var showVersions = false
+    var showReason = false
     var requestedPorts: Set<UInt16>?
     var target: String?
     var index = 0
@@ -83,6 +86,10 @@ struct VirtualLabEngine: Sendable {
         break
       case "-sV":
         showVersions = true
+      case "-Pn", "--open":
+        break
+      case "--reason":
+        showReason = true
       case "-p":
         index += 1
         guard index < arguments.count,
@@ -110,7 +117,8 @@ struct VirtualLabEngine: Sendable {
     let services = host.services.filter { requestedPorts?.contains($0.port) ?? true }
     let rows = services.map { service in
       let version = showVersions ? service.version.map { " \($0)" } ?? "" : ""
-      return "\(service.port)/\(service.transport) open \(service.name)\(version)"
+      let reason = showReason ? " syn-ack" : ""
+      return "\(service.port)/\(service.transport) open \(service.name)\(version)\(reason)"
     }
     let output = (["Nmap scan report for \(host.hostname) (\(host.address))", "PORT STATE SERVICE"] + rows)
       .joined(separator: "\n")
@@ -119,6 +127,28 @@ struct VirtualLabEngine: Sendable {
       explanations: [
         .init(term: "-sT", meaning: "Symuluje pełne połączenie TCP z portami hosta."),
         .init(term: "-sV", meaning: "Pokazuje wersję usługi, jeśli laboratorium ją zna."),
+      ] + (showReason ? [.init(term: "--reason", meaning: "Wyjaśnia, z czego wynika stan portu.")] : [])
+    )
+  }
+
+  private func resolveNuclei(_ arguments: [String]) -> VirtualCommandResult {
+    guard case .nuclei(let target, let tags)? = LabCommandIntent.parse(
+      (["nuclei"] + arguments).joined(separator: " ")
+    ), let components = URLComponents(string: target),
+       let hostName = components.host, network.host(at: hostName) != nil
+    else {
+      return invalid(
+        "Cel Nuclei nie należy do sieci demonstracyjnej.",
+        hint: "Użyj nuclei -u http://web.lab -tags misconfiguration."
+      )
+    }
+
+    let tagList = tags.isEmpty ? "domyślne" : tags.joined(separator: ",")
+    return success(
+      "[symulacja] \(target) [\(tagList)] konfiguracja wymaga uwagi",
+      explanations: [
+        .init(term: "-u", meaning: "Wskazuje pojedynczy cel w sieci demo."),
+        .init(term: "-tags", meaning: "Wybiera kategorie szablonów bez kontaktu z Internetem."),
       ]
     )
   }
@@ -134,15 +164,35 @@ struct VirtualLabEngine: Sendable {
   }
 
   private func resolveDig(_ arguments: [String]) -> VirtualCommandResult {
-    guard arguments.count == 2, arguments[0] == "-x",
-          let host = network.host(at: arguments[1])
-    else {
-      return invalid("Nieprawidłowe zapytanie reverse DNS.", hint: "Użyj dig -x <adres hosta>.")
+    if arguments.count == 2, arguments[0] == "-x" {
+      guard let host = network.host(at: arguments[1]) else {
+        return invalid("NXDOMAIN: adres nie istnieje w sieci demonstracyjnej.", hint: "Użyj adresu hosta znalezionego w laboratorium.")
+      }
+      return success(
+        "\(host.address).in-addr.arpa. 60 IN PTR \(host.hostname).",
+        explanations: [.init(term: "-x", meaning: "Pyta o nazwę przypisaną do adresu IP.")]
+      )
     }
-    return success(
-      "\(host.address).in-addr.arpa. 60 IN PTR \(host.hostname).",
-      explanations: [.init(term: "-x", meaning: "Pyta o nazwę przypisaną do adresu IP.")]
-    )
+
+    guard case .dig(let name, let type, let server, let short)? = LabCommandIntent.parse(
+      (["dig"] + arguments).joined(separator: " ")
+    ) else {
+      return invalid("Nieprawidłowe zapytanie Dig.", hint: "Użyj dig [@serwer] <nazwa> <typ> [+short].")
+    }
+    if let server, network.host(at: server) == nil {
+      return invalid("Serwer DNS nie istnieje w laboratorium.", hint: "Użyj @router.lab.")
+    }
+    let records = network.records(named: name, type: type)
+    guard !records.isEmpty else {
+      return invalid("NXDOMAIN: \(name) nie istnieje w strefie demonstracyjnej.", hint: "Sprawdź pisownię nazwy i typ rekordu.")
+    }
+    let output = short
+      ? records.map(\.value).joined(separator: "\n")
+      : records.map { "\($0.name). 60 IN \($0.type) \($0.value)" }.joined(separator: "\n")
+    return success(output, explanations: [
+      .init(term: type, meaning: "Wybiera typ rekordu DNS."),
+      .init(term: name, meaning: "Nazwa w lokalnej strefie demonstracyjnej."),
+    ])
   }
 
   private func resolveSSH(_ arguments: [String]) -> VirtualCommandResult {
@@ -160,6 +210,44 @@ struct VirtualLabEngine: Sendable {
       "Połączenie demonstracyjne z \(parts[0])@\(host.hostname). Żadne dane logowania nie zostały wysłane.",
       explanations: [.init(term: "ssh", meaning: "Symuluje bezpieczne zdalne logowanie do hosta.")]
     )
+  }
+
+  private func resolveCurl(_ arguments: [String]) -> VirtualCommandResult {
+    guard case .curl(let method, let url, _, _, let head, let follow, let timeout)? = LabCommandIntent.parse(
+      (["curl"] + arguments.map(shellQuote)).joined(separator: " ")
+    ), let components = URLComponents(string: url),
+       let host = components.host,
+       components.scheme == "http" || components.scheme == "https"
+    else {
+      return invalid("Nieprawidłowe żądanie Curl.", hint: "Podaj lokalny adres http://web.lab lub http://api.lab.")
+    }
+    guard timeout == nil || timeout! > 0 else {
+      return invalid("Limit czasu musi być dodatni.", hint: "Przykład: --max-time 5.")
+    }
+    let path = components.path.isEmpty ? "/" : components.path
+    guard var endpoint = network.endpoint(host: host, path: path, method: method) else {
+      return invalid("Cel nie istnieje w wirtualnej sieci HTTP.", hint: "Użyj hosta web.lab albo api.lab.")
+    }
+    if follow, let redirectPath = endpoint.redirectPath,
+       let redirected = network.endpoint(host: host, path: redirectPath, method: "GET") {
+      endpoint = redirected
+    }
+    let reason = switch endpoint.status {
+    case 200: "OK"
+    case 201: "Created"
+    case 302: "Found"
+    default: "Demo"
+    }
+    var rows = ["HTTP/1.1 \(endpoint.status) \(reason)", "Content-Type: application/json"]
+    if !head && !endpoint.body.isEmpty { rows.append("\n\(endpoint.body)") }
+    return success(rows.joined(separator: "\n"), explanations: [
+      .init(term: method, meaning: "Metoda żądania wykonywana wyłącznie w lokalnej symulacji."),
+      .init(term: "Cel", meaning: "\(host)\(endpoint.path) należy do wirtualnej sieci NetScope."),
+    ])
+  }
+
+  private func shellQuote(_ token: String) -> String {
+    token.contains(where: \.isWhitespace) ? "'\(token)'" : token
   }
 
   private func parsePorts(_ value: String) -> Set<UInt16>? {

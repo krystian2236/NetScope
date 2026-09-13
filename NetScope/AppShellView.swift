@@ -4,9 +4,10 @@ enum AppTab: Int, Hashable {
   case dashboard = 0
   case toolbox = 3
   case comingSoon = 5
+  case cipherPath = 6
 
   static let navigationOrder: [AppTab] = [
-    .dashboard, .toolbox, .comingSoon,
+    .dashboard, .toolbox, .comingSoon, .cipherPath,
   ]
 
   static func restored(from rawValue: Int) -> AppTab {
@@ -77,6 +78,9 @@ struct AppShellView: View {
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
       LaboratoryView(onTryOwnNetwork: tryOwnNetwork)
         .tabItem { Label("Laboratorium", systemImage: "terminal") }.tag(AppTab.comingSoon)
+      CipherPathInfoView()
+        .tabItem { Label("CipherPath", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+        .tag(AppTab.cipherPath)
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -103,6 +107,30 @@ struct AppShellView: View {
     scanner.profile = request.recommendedProfile
     routeNotice = "Profil Szybki jest gotowy. Skan rozpocznie się dopiero po dotknięciu przycisku Rozpocznij skan."
     selectedTabRaw = AppTab.dashboard.rawValue
+  }
+}
+
+private struct CipherPathInfoView: View {
+  var body: some View {
+    NavigationStack {
+      List {
+        Section {
+          Label("Nauka krok po kroku", systemImage: "map.fill")
+          Label("Misje i bezpieczne scenariusze", systemImage: "target")
+          Label("Postęp, punkty i osiągnięcia", systemImage: "medal.fill")
+        } header: {
+          Text("CipherPath")
+        } footer: {
+          Text("CipherPath uczy podstaw i prowadzi przez misje. NetScope pozostaje miejscem do praktyki z siecią, narzędziami i lokalnym laboratorium.")
+        }
+
+        Section("Integracja") {
+          Label("Połączenie aplikacji pojawi się później", systemImage: "link.badge.plus")
+            .foregroundStyle(.secondary)
+        }
+      }
+      .navigationTitle("CipherPath")
+    }
   }
 }
 

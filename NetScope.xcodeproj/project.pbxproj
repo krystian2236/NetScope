@@ -47,6 +47,17 @@
 		E00000000000000000000037 /* LabProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002D /* LabProgressStore.swift */; };
 		E00000000000000000000038 /* TerminalLessonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002E /* TerminalLessonView.swift */; };
 		E00000000000000000000039 /* LaboratoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002F /* LaboratoryView.swift */; };
+		E00000000000000000000040 /* LabCurriculumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000030 /* LabCurriculumTests.swift */; };
+		E00000000000000000000041 /* LabCurriculum.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000031 /* LabCurriculum.swift */; };
+		E00000000000000000000042 /* LabProgramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000032 /* LabProgramView.swift */; };
+		E00000000000000000000043 /* NmapLabProgramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000033 /* NmapLabProgramTests.swift */; };
+		E00000000000000000000044 /* NucleiLabProgramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000034 /* NucleiLabProgramTests.swift */; };
+		E00000000000000000000045 /* NmapLabProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000035 /* NmapLabProgram.swift */; };
+		E00000000000000000000046 /* NucleiLabProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000036 /* NucleiLabProgram.swift */; };
+		E00000000000000000000047 /* DigLabProgramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000037 /* DigLabProgramTests.swift */; };
+		E00000000000000000000048 /* DigLabProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000038 /* DigLabProgram.swift */; };
+		E00000000000000000000049 /* CurlLabProgramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000039 /* CurlLabProgramTests.swift */; };
+		E00000000000000000000050 /* CurlLabProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003A /* CurlLabProgram.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +114,17 @@
 		F0000000000000000000002D /* LabProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabProgressStore.swift; sourceTree = "<group>"; };
 		F0000000000000000000002E /* TerminalLessonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLessonView.swift; sourceTree = "<group>"; };
 		F0000000000000000000002F /* LaboratoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaboratoryView.swift; sourceTree = "<group>"; };
+		F00000000000000000000030 /* LabCurriculumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabCurriculumTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000031 /* LabCurriculum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabCurriculum.swift; sourceTree = "<group>"; };
+		F00000000000000000000032 /* LabProgramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabProgramView.swift; sourceTree = "<group>"; };
+		F00000000000000000000033 /* NmapLabProgramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NmapLabProgramTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000034 /* NucleiLabProgramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NucleiLabProgramTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000035 /* NmapLabProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NmapLabProgram.swift; sourceTree = "<group>"; };
+		F00000000000000000000036 /* NucleiLabProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NucleiLabProgram.swift; sourceTree = "<group>"; };
+		F00000000000000000000037 /* DigLabProgramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigLabProgramTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000038 /* DigLabProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigLabProgram.swift; sourceTree = "<group>"; };
+		F00000000000000000000039 /* CurlLabProgramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurlLabProgramTests.swift; sourceTree = "<group>"; };
+		F0000000000000000000003A /* CurlLabProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurlLabProgram.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +188,12 @@
 				F0000000000000000000002D /* LabProgressStore.swift */,
 				F0000000000000000000002E /* TerminalLessonView.swift */,
 				F0000000000000000000002F /* LaboratoryView.swift */,
+				F00000000000000000000031 /* LabCurriculum.swift */,
+				F00000000000000000000032 /* LabProgramView.swift */,
+				F00000000000000000000035 /* NmapLabProgram.swift */,
+				F00000000000000000000036 /* NucleiLabProgram.swift */,
+				F00000000000000000000038 /* DigLabProgram.swift */,
+				F0000000000000000000003A /* CurlLabProgram.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -183,6 +211,11 @@
 				F00000000000000000000027 /* VirtualNetworkTests.swift */,
 				F00000000000000000000029 /* VirtualLabEngineTests.swift */,
 				F0000000000000000000002B /* LabMissionTests.swift */,
+				F00000000000000000000030 /* LabCurriculumTests.swift */,
+				F00000000000000000000033 /* NmapLabProgramTests.swift */,
+				F00000000000000000000034 /* NucleiLabProgramTests.swift */,
+				F00000000000000000000037 /* DigLabProgramTests.swift */,
+				F00000000000000000000039 /* CurlLabProgramTests.swift */,
 			);
 			path = NetScopeTests;
 			sourceTree = "<group>";
@@ -326,6 +359,12 @@
 				E00000000000000000000037 /* LabProgressStore.swift in Sources */,
 				E00000000000000000000038 /* TerminalLessonView.swift in Sources */,
 				E00000000000000000000039 /* LaboratoryView.swift in Sources */,
+				E00000000000000000000041 /* LabCurriculum.swift in Sources */,
+				E00000000000000000000042 /* LabProgramView.swift in Sources */,
+				E00000000000000000000045 /* NmapLabProgram.swift in Sources */,
+				E00000000000000000000046 /* NucleiLabProgram.swift in Sources */,
+				E00000000000000000000048 /* DigLabProgram.swift in Sources */,
+				E00000000000000000000050 /* CurlLabProgram.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,
@@ -341,6 +380,11 @@
 				E00000000000000000000031 /* VirtualNetworkTests.swift in Sources */,
 				E00000000000000000000033 /* VirtualLabEngineTests.swift in Sources */,
 				E00000000000000000000035 /* LabMissionTests.swift in Sources */,
+				E00000000000000000000040 /* LabCurriculumTests.swift in Sources */,
+				E00000000000000000000043 /* NmapLabProgramTests.swift in Sources */,
+				E00000000000000000000044 /* NucleiLabProgramTests.swift in Sources */,
+				E00000000000000000000047 /* DigLabProgramTests.swift in Sources */,
+				E00000000000000000000049 /* CurlLabProgramTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
