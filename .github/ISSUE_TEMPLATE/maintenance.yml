@@ -1,0 +1,44 @@
+name: Maintenance
+description: Refactor, porządkowanie lub prace techniczne w VectorNet
+body:
+  - type: markdown
+    attributes:
+      value: "## VectorNet — maintenance / refactor"
+  - type: textarea
+    id: reason
+    attributes:
+      label: Powód
+      description: Dlaczego ta praca jest potrzebna teraz?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Zakres
+      description: Jakie pliki lub moduły wolno zmienić?
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Co nie może się zmienić
+      description: Zachowanie, API lub dane, które muszą pozostać zgodne.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort
+      options: [XS, S, M, L]
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Weryfikacja
+      description: Testy, build, diff i inne kontrole.
