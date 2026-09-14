@@ -9,12 +9,29 @@ enum NmapCatalog {
     reviewedAt: "2026-09-12",
     usageParts: [
       .literal("nmap"),
-      .category(label: "[Scan Type(s)]", categoryID: "scan"),
-      .category(label: "[Options]", categoryID: "discovery"),
-      .category(label: "{target specification}", categoryID: "target"),
+      .section(.init(id: "scan-types", label: "[Scan Type(s)]", categoryIDs: ["scan"], tone: .scan)),
+      .section(
+        .init(
+          id: "options",
+          label: "[Options]",
+          categoryIDs: [
+            "discovery", "ports", "service", "scripts", "os", "timing", "evasion",
+            "output", "misc",
+          ],
+          tone: .options
+        )
+      ),
+      .section(
+        .init(
+          id: "target-specification",
+          label: "{target specification}",
+          categoryIDs: ["target"],
+          tone: .target
+        )
+      ),
     ],
     categories: categories,
-    options: options
+    options: featuredOptions
   )
 
   private static let categories: [ToolCategoryDefinition] = [
@@ -44,13 +61,28 @@ enum NmapCatalog {
     reason: "Ta opcja odczytuje albo zapisuje plik na urządzeniu uruchamiającym Nmap."
   )
 
+  private static let featuredOptionIDs: Set<String> = [
+    "target", "input-list", "exclude", "ping-scan", "skip-discovery", "tcp-connect",
+    "udp-scan", "ports", "fast-scan", "top-ports", "service-detection",
+    "default-scripts", "os-detection", "timing-template", "host-timeout", "open-only",
+    "reason", "verbose", "ipv6", "version", "help",
+  ]
+
+  private static var featuredOptions: [ToolOptionDefinition] {
+    options.map { option in
+      var option = option
+      option.isFeatured = featuredOptionIDs.contains(option.id)
+      return option
+    }
+  }
+
   private static let options: [ToolOptionDefinition] = [
     // TARGET SPECIFICATION
     v("input-list", "target", ["-iL"], "Lista celów", "Czyta hosty lub sieci z pliku.", .path(example: "hosts.txt"), 900, file),
     v("random-targets", "target", ["-iR"], "Losowe cele", "Wybiera podaną liczbę losowych hostów.", .integer(range: 1...1_000_000, example: "10"), 910, active),
     v("exclude", "target", ["--exclude"], "Wyklucz cele", "Pomija podane hosty lub sieci.", .list(example: "192.168.1.1,192.168.1.10"), 920),
     v("exclude-file", "target", ["--excludefile"], "Plik wykluczeń", "Czyta cele do pominięcia z pliku.", .path(example: "exclude.txt"), 930, file),
-    v("target", "target", [""], "Cel", "Wskazuje nazwę hosta, adres IP lub sieć CIDR.", .text(example: "192.168.1.0/24"), 10_000),
+    v("target", "target", [""], "Cel", "Wskazuje nazwę hosta, adres IP lub sieć CIDR.", .text(example: "192.168.1.0/24"), 10_000, .standard, .separated, [], [], .target),
 
     // HOST DISCOVERY
     f("list-scan", "discovery", ["-sL"], "Lista bez skanowania", "Wyświetla cele bez wysyłania skanu portów.", 200),
@@ -197,10 +229,12 @@ enum NmapCatalog {
     _ id: String, _ category: String, _ flags: [String], _ title: String,
     _ summary: String, _ kind: ToolValueKind, _ order: Int,
     _ risk: ToolRiskLevel = .standard, _ placement: ToolValuePlacement = .separated,
-    _ requires: Set<String> = [], _ conflicts: Set<String> = []
+    _ requires: Set<String> = [], _ conflicts: Set<String> = [],
+    _ phase: ToolArgumentPhase = .beforeTarget
   ) -> ToolOptionDefinition {
     .init(id: id, categoryID: category, flags: flags, title: title, summary: summary,
           valueKind: kind, valuePlacement: placement, risk: risk,
-          requiresOptionIDs: requires, conflictsWithOptionIDs: conflicts, order: order)
+          requiresOptionIDs: requires, conflictsWithOptionIDs: conflicts, order: order,
+          argumentPhase: phase)
   }
 }

@@ -18,6 +18,10 @@
 - Prawdziwy skan jest osobną czynnością i zachowuje ograniczenie do prywatnych adresów.
 - Demo działa bez zakupu, konta oraz usługi chmurowej.
 - Pierwsza monetyzacja to jeden niekonsumowalny zakup `NetScope Pro`, nie subskrypcja.
+- Projekt ma schematy `NetScope App Store` i `NetScope Developer`.
+- `NetScope App Store` używa `pl.krystian.NetScope`; `NetScope Developer` używa `pl.krystian.NetScope.dev` i nazwy `NetScope Dev`.
+- Flaga `NETSCOPE_DEVELOPER_TOOLS` jest zdefiniowana wyłącznie dla wariantu Developer; nie istnieje runtime'owy przełącznik odblokowujący ten wariant.
+- Konstruktor Developer ostrzega, ale nie blokuje kopiowania poprawnych poleceń i nigdy ich nie wykonuje.
 - Nie zapisujemy haseł, tokenów ani kluczy prywatnych.
 - Zachowujemy iOS 17.0 jako minimalną wersję systemu.
 - Każdy commit wymaga osobnego, jednoznacznego zatwierdzenia użytkownika.
@@ -33,6 +37,7 @@
 - Create: `NetScope/LaboratoryView.swift` — lista lekcji, blokady Pro i wejście do terminala.
 - Create: `NetScope/EntitlementStore.swift` — stan demo/Pro i StoreKit 2.
 - Create: `NetScope/NetScope.storekit` — lokalna konfiguracja produktu testowego.
+- Create: `NetScope/BuildVariant.swift` — kompilacyjna identyfikacja wariantu bez przełącznika runtime.
 - Modify: `NetScope/AppShellView.swift` — wejście do laboratorium i przekazanie żądania skanu.
 - Modify: `NetScope/ScannerView.swift` — bezpieczny profil przekazany z lekcji.
 - Modify: `NetScope.xcodeproj/project.pbxproj` — źródła, testy i StoreKit configuration.
@@ -42,6 +47,87 @@
 - Create: `NetScopeTests/LabMissionTests.swift` — testy misji i postępu.
 - Create: `NetScopeTests/EntitlementStoreTests.swift` — testy dostępu demo/Pro.
 - Modify: `scripts/test-project-integrity.sh` — kontrola obecności nowych źródeł i produktu.
+
+---
+
+### Task 0: Rozdzielenie wariantów App Store i Developer
+
+**Files:**
+- Create: `NetScope/BuildVariant.swift`
+- Modify: `NetScope.xcodeproj/project.pbxproj`
+- Modify: `NetScopeTests/NetScopeTests.swift`
+
+**Interfaces:**
+- Consumes: flagę kompilatora `NETSCOPE_DEVELOPER_TOOLS`.
+- Produces: `BuildVariant.current`, `includesDeveloperTools`, dwa schematy i osobne identyfikatory bundle.
+
+- [x] **Step 1: Dodaj test kontraktu aktywnego wariantu**
+
+```swift
+@Test("Build variant has one compile-time identity")
+func buildVariantIdentity() {
+  #if NETSCOPE_DEVELOPER_TOOLS
+  #expect(BuildVariant.current == .developer)
+  #expect(BuildVariant.current.includesDeveloperTools)
+  #else
+  #expect(BuildVariant.current == .appStore)
+  #expect(!BuildVariant.current.includesDeveloperTools)
+  #endif
+}
+```
+
+- [x] **Step 2: Uruchom test i potwierdź porażkę z brakiem `BuildVariant`**
+
+```zsh
+xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:NetScopeTests/SessionRestorationTests CODE_SIGNING_ALLOWED=NO
+```
+
+- [x] **Step 3: Dodaj kompilacyjny model wariantu**
+
+```swift
+enum BuildVariant: Equatable, Sendable {
+  case appStore
+  case developer
+
+  static var current: BuildVariant {
+    #if NETSCOPE_DEVELOPER_TOOLS
+    .developer
+    #else
+    .appStore
+    #endif
+  }
+
+  var includesDeveloperTools: Bool { self == .developer }
+}
+```
+
+- [x] **Step 4: Dodaj konfigurację i współdzielone schematy**
+
+Utwórz konfiguracje `Debug-Developer` i `Release-Developer` jako kopie
+odpowiednich konfiguracji bazowych. Tylko one otrzymują
+`SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) NETSCOPE_DEVELOPER_TOOLS`,
+`PRODUCT_BUNDLE_IDENTIFIER = pl.krystian.NetScope.dev` i
+`INFOPLIST_KEY_CFBundleDisplayName = NetScope Dev`. Schemat `NetScope App Store`
+używa istniejących konfiguracji oraz `pl.krystian.NetScope`; schemat `NetScope
+Developer` używa konfiguracji Developer.
+
+- [x] **Step 5: Uruchom test w obu schematach i sprawdź identyfikatory**
+
+```zsh
+xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope App Store' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project NetScope.xcodeproj -scheme 'NetScope Developer' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+```
+
+Expected: oba zestawy PASS; wynik `-showBuildSettings` zwraca odpowiednio
+`pl.krystian.NetScope` i `pl.krystian.NetScope.dev`.
+
+- [x] **Step 6: Zatrzymaj się przed commitem**
+
+Po zgodzie użytkownika commit: `chore: separate App Store and developer builds`.
 
 ---
 
@@ -56,7 +142,7 @@
 - Consumes: wyłącznie typy standardowej biblioteki Swift.
 - Produces: `VirtualHost`, `VirtualService`, `VirtualNetwork.demo` oraz metody `host(at:)` i `activeHosts(in:)`.
 
-- [ ] **Step 1: Dodaj test danych sieci**
+- [x] **Step 1: Dodaj test danych sieci**
 
 ```swift
 import Testing
@@ -76,7 +162,7 @@ struct VirtualNetworkTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź oczekiwaną porażkę**
+- [x] **Step 2: Uruchom test i potwierdź oczekiwaną porażkę**
 
 Run:
 
@@ -88,7 +174,7 @@ xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
 
 Expected: FAIL, ponieważ `VirtualNetwork` nie istnieje.
 
-- [ ] **Step 3: Dodaj minimalny model i dane demo**
+- [x] **Step 3: Dodaj minimalny model i dane demo**
 
 ```swift
 import Foundation
@@ -139,7 +225,7 @@ struct VirtualNetwork: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Dodaj oba pliki do targetów i uruchom test ponownie**
+- [x] **Step 4: Dodaj oba pliki do targetów i uruchom test ponownie**
 
 Expected: `VirtualNetworkTests` PASS.
 
@@ -163,7 +249,7 @@ git commit -m "feat: add virtual demo network"
 - Consumes: `VirtualNetwork`.
 - Produces: `VirtualLabEngine.execute(_:) -> VirtualCommandResult`, `VirtualCommandResult`, `VirtualExplanation`.
 
-- [ ] **Step 1: Dodaj testy obsługiwanych i zabronionych operacji**
+- [x] **Step 1: Dodaj testy obsługiwanych i zabronionych operacji**
 
 ```swift
 import Testing
@@ -197,11 +283,11 @@ struct VirtualLabEngineTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź porażkę z brakiem typu**
+- [x] **Step 2: Uruchom test i potwierdź porażkę z brakiem typu**
 
 Run: poprzednie polecenie z `-only-testing:NetScopeTests/VirtualLabEngineTests`.
 
-- [ ] **Step 3: Zaimplementuj zamknięty zestaw poleceń**
+- [x] **Step 3: Zaimplementuj zamknięty zestaw poleceń**
 
 ```swift
 struct VirtualExplanation: Equatable, Sendable {
@@ -241,7 +327,7 @@ nich. Obsługiwane układy to: `nmap -sn <cidr>`, `nmap -sT [-sV] [-p ports]
 zwraca `.invalid`; żadna metoda nie importuje `Network` ani nie wywołuje API
 sieciowego.
 
-- [ ] **Step 4: Dodaj test każdej jawnej gałęzi i uruchom cały suite interpretera**
+- [x] **Step 4: Dodaj test każdej jawnej gałęzi i uruchom cały suite interpretera**
 
 Expected: wszystkie testy PASS; wynik dla tego samego wejścia jest identyczny.
 
@@ -261,7 +347,7 @@ Po zgodzie użytkownika commit: `feat: add safe virtual command engine`.
 - Consumes: `VirtualCommandResult`.
 - Produces: `LabMission.demo`, `LabStep.accepts(command:result:)`, `LabProgressStore.complete(missionID:stepID:)`.
 
-- [ ] **Step 1: Dodaj test semantycznego zaliczenia i przywrócenia postępu**
+- [x] **Step 1: Dodaj test semantycznego zaliczenia i przywrócenia postępu**
 
 ```swift
 @Suite("Lab missions")
@@ -286,11 +372,11 @@ struct LabMissionTests {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź porażkę**
+- [x] **Step 2: Uruchom test i potwierdź porażkę**
 
 Run: test `LabMissionTests` na iPhonie 17.
 
-- [ ] **Step 3: Dodaj trzy misje demo**
+- [x] **Step 3: Dodaj trzy misje demo**
 
 ```swift
 struct LabStep: Identifiable, Equatable, Sendable {
@@ -349,7 +435,7 @@ struct LabMission: Identifiable, Equatable, Sendable {
 
 `LabMission.demo` zawiera identyfikatory `host-discovery`, `ports-services` i `ssh-basics`; wszystkie mają `isPro == false`. Intencje opisują odkrycie podsieci, skan TCP z wersjami oraz połączenie SSH do `mac.lab`.
 
-- [ ] **Step 4: Dodaj trwałość postępu**
+- [x] **Step 4: Dodaj trwałość postępu**
 
 ```swift
 struct CompletedLabStep: Codable, Hashable {
@@ -385,7 +471,7 @@ final class LabProgressStore: ObservableObject {
 
 Historia tekstu terminala pozostaje osobnym stanem sceny i nie trafia do analityki.
 
-- [ ] **Step 5: Uruchom testy misji, następnie `git diff --check`**
+- [x] **Step 5: Uruchom testy misji, następnie `git diff --check`**
 
 Expected: PASS i brak błędów whitespace.
 
@@ -405,7 +491,7 @@ Po zgodzie użytkownika commit: `feat: add demo missions and progress`.
 - Consumes: `VirtualLabEngine`, `LabMission`, `LabProgressStore`, `EntitlementAccess`.
 - Produces: `LaboratoryView(onTryOwnNetwork:)` i `TerminalLessonView(mission:onTryOwnNetwork:)`.
 
-- [ ] **Step 1: Dodaj test stabilnego katalogu demo**
+- [x] **Step 1: Dodaj test stabilnego katalogu demo**
 
 ```swift
 @Test("Demo exposes three free missions in learning order")
@@ -415,11 +501,11 @@ func demoMissionOrder() {
 }
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź jego wynik przed zmianą UI**
+- [x] **Step 2: Uruchom test i potwierdź jego wynik przed zmianą UI**
 
 Expected: PASS po Task 3; jest to test kontraktu wejściowego widoku.
 
-- [ ] **Step 3: Zbuduj listę lekcji**
+- [x] **Step 3: Zbuduj listę lekcji**
 
 ```swift
 struct LaboratoryView: View {
@@ -439,7 +525,7 @@ struct LaboratoryView: View {
 }
 ```
 
-- [ ] **Step 4: Zbuduj terminal bez automatycznego wykonywania**
+- [x] **Step 4: Zbuduj terminal bez automatycznego wykonywania**
 
 Dodaj model wpisu:
 
@@ -457,7 +543,7 @@ Przycisk „Uruchom w laboratorium” wywołuje wyłącznie
 rozwijane `VirtualExplanation`. Pole tekstowe ma etykietę VoiceOver „Polecenie
 laboratorium”; komunikaty sukcesu są ogłaszane przez accessibility announcement.
 
-- [ ] **Step 5: Dodaj zachowanie błędów i podpowiedzi**
+- [x] **Step 5: Dodaj zachowanie błędów i podpowiedzi**
 
 Nieznane polecenie pozostaje w historii. Błąd nie zeruje wpisu ani postępu. Podpowiedzi odsłaniają się kolejno, a pełne rozwiązanie pojawia się dopiero po ostatniej podpowiedzi.
 

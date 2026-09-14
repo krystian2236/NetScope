@@ -4,24 +4,39 @@ struct ScannerView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @ObservedObject var tools: NetworkToolsModel
+  let routeNotice: String?
 
   var body: some View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          DeveloperAreaTag(AppTab.dashboard.developerAreaID)
+          DeveloperAreaTag(.startScreen)
+
+          if let routeNotice {
+            InfoBanner(
+              icon: "hand.tap.fill",
+              title: "Gotowe do próby",
+              message: routeNotice
+            )
+          }
+          DeveloperAreaTag(.startNetworkContext)
           NetworkHeaderCard(context: scanner.context)
           StartDestinations(
             scanner: scanner,
             knownDeviceStore: knownDeviceStore,
             tools: tools
           )
+          DeveloperAreaTag(.startScanWorkflow)
           ScanWorkflowView(current: scanner.stage, phase: scanner.phase)
+          DeveloperAreaTag(.startScanAction)
           ScanControlCard(
             profile: $scanner.profile,
             isScanning: scanner.phase.isScanning,
             onScan: startScan,
             onCancel: scanner.cancel
           )
+          DeveloperAreaTag(.startScanResults)
           ScanStatusView(phase: scanner.phase, deviceCount: scanner.devices.count)
           if scanner.sessionDetails != nil {
             NavigationLink {
@@ -72,6 +87,7 @@ private struct StartDestinations: View {
   var body: some View {
     HStack(spacing: 10) {
       destination(
+        area: .startDevices,
         title: "Urządzenia",
         subtitle: scanner.devices.isEmpty ? "Po wykonaniu skanu" : "Wykryto: \(scanner.devices.count)",
         icon: "desktopcomputer"
@@ -80,6 +96,7 @@ private struct StartDestinations: View {
       }
 
       destination(
+        area: .startServices,
         title: "Usługi",
         subtitle: "Porty, ping i Bonjour",
         icon: "wrench.and.screwdriver"
@@ -90,35 +107,40 @@ private struct StartDestinations: View {
   }
 
   private func destination<Destination: View>(
+    area: DeveloperAreaID,
     title: String,
     subtitle: String,
     icon: String,
     @ViewBuilder destination: () -> Destination
   ) -> some View {
-    NavigationLink(destination: destination()) {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Image(systemName: icon)
-            .font(.headline)
-            .foregroundStyle(.cyan)
-          Spacer()
-          Image(systemName: "chevron.right")
-            .font(.caption.weight(.bold))
+    VStack(alignment: .leading, spacing: 6) {
+      DeveloperAreaTag(area)
+
+      NavigationLink(destination: destination()) {
+        VStack(alignment: .leading, spacing: 8) {
+          HStack {
+            Image(systemName: icon)
+              .font(.headline)
+              .foregroundStyle(.cyan)
+            Spacer()
+            Image(systemName: "chevron.right")
+              .font(.caption.weight(.bold))
+              .foregroundStyle(.secondary)
+          }
+          Text(title)
+            .font(.subheadline.weight(.semibold))
+          Text(subtitle)
+            .font(.caption2)
             .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
         }
-        Text(title)
-          .font(.subheadline.weight(.semibold))
-        Text(subtitle)
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 14))
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(12)
-      .background(.background, in: RoundedRectangle(cornerRadius: 14))
+      .buttonStyle(.plain)
     }
-    .buttonStyle(.plain)
   }
 }
 
