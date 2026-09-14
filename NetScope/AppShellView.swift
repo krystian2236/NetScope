@@ -104,6 +104,7 @@ struct DevicesView: View {
         List(scanner.devices) { device in
           NavigationLink {
             DeviceDetailView(device: device, key: key(for: device), knownDeviceStore: knownDeviceStore)
+              .devUIReference(.deviceDetail)
           } label: {
             DeviceRow(device: device, record: record(for: device), registryStatus: status(for: device))
           }
@@ -137,6 +138,9 @@ struct DevicesView: View {
       NavigationStack {
         List {
           Section {
+            DevUIReferenceLabel(reference: .comingSoon)
+          }
+          Section {
             Label("Konto i synchronizacja", systemImage: "person.crop.circle.badge.checkmark")
             Label("Zadania i przypomnienia", systemImage: "checklist")
             Label("Informacje o aktualizacjach", systemImage: "arrow.triangle.2.circlepath")
@@ -163,15 +167,30 @@ struct ServicesHubView: View {
           .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
       }
       Section("Sprawdzanie") {
-        serviceLink(title: "Porty", subtitle: "Sprawdź dostępność wybranych usług TCP", icon: "shield.lefthalf.filled") {
+        serviceLink(
+          reference: .portScan,
+          title: "Porty",
+          subtitle: "Sprawdź dostępność wybranych usług TCP",
+          icon: "shield.lefthalf.filled"
+        ) {
           PortScannerView(model: tools)
         }
-        serviceLink(title: "Ping i adresy", subtitle: "DNS, lokalny i publiczny IP oraz TCP Ping", icon: "waveform.path.ecg") {
+        serviceLink(
+          reference: .diagnostics,
+          title: "Ping i adresy",
+          subtitle: "DNS, lokalny i publiczny IP oraz TCP Ping",
+          icon: "waveform.path.ecg"
+        ) {
           DiagnosticsView(model: tools)
         }
       }
       Section("Wykrywanie automatyczne") {
-        serviceLink(title: "Bonjour", subtitle: "Usługi ogłaszane przez urządzenia w sieci", icon: "bonjour") {
+        serviceLink(
+          reference: .bonjour,
+          title: "Bonjour",
+          subtitle: "Usługi ogłaszane przez urządzenia w sieci",
+          icon: "bonjour"
+        ) {
           ServicesView(discovery: scanner.bonjourDiscovery)
         }
       }
@@ -180,8 +199,14 @@ struct ServicesHubView: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  private func serviceLink<Destination: View>(title: String, subtitle: String, icon: String, @ViewBuilder destination: () -> Destination) -> some View {
-    NavigationLink(destination: destination()) {
+  private func serviceLink<Destination: View>(
+    reference: DevUIReference,
+    title: String,
+    subtitle: String,
+    icon: String,
+    @ViewBuilder destination: () -> Destination
+  ) -> some View {
+    NavigationLink(destination: destination().devUIReference(reference)) {
       HStack(spacing: 11) {
         Image(systemName: icon).foregroundStyle(.cyan).frame(width: 34, height: 34)
           .background(.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 9))
