@@ -369,7 +369,7 @@ private struct ScanStatusView: View {
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
           .accessibilityLabel("Postęp skanowania")
-          .accessibilityValue("(completed) z (total) adresów")
+          .accessibilityValue("\(completed) z \(total) adresów")
       }
     case .finished(let date):
       InfoBanner(
