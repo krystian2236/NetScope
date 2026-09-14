@@ -3,36 +3,6 @@ import Testing
 
 @testable import NetScope
 
-@Suite("DEV UI references")
-struct DevUIReferenceTests {
-  @Test("VectorNet labels use stable English technical paths")
-  func labelsUseStablePaths() {
-    #expect(DevUIReference.start.displayLabel == "[DEV: VECTORNET / START]")
-    #expect(DevUIReference.scanner.displayLabel == "[DEV: VECTORNET / START / SCANNER]")
-    #expect(DevUIReference.toolboxNmap.displayLabel == "[DEV: VECTORNET / TOOLBOX / NMAP]")
-    #expect(DevUIReference.deviceDetail.displayLabel == "[DEV: VECTORNET / DEVICE_DETAIL]")
-  }
-
-  @Test("Copy values identify app screen component and SwiftUI view")
-  func copyValuesAreAgentReady() {
-    #expect(
-      DevUIReference.toolboxNmap.uiRef
-        == "UIREF app=VectorNet screen=toolbox component=nmap view=ToolLearningView"
-    )
-    #expect(
-      DevUIReference.diagnostics.uiRef
-        == "UIREF app=VectorNet screen=services component=diagnostics view=DiagnosticsView"
-    )
-    #expect(Set(DevUIReference.allCases.map(\.uiRef)).count == DevUIReference.allCases.count)
-  }
-
-  @Test("DEV references are enabled only for debug/developer presentation")
-  func visibilityIsDeveloperOnly() {
-    #expect(DevUIReference.isVisible(isDebugBuild: true))
-    #expect(!DevUIReference.isVisible(isDebugBuild: false))
-  }
-}
-
 @Suite("Session restoration")
 struct SessionRestorationTests {
   @Test("Unknown tab falls back to dashboard")
@@ -42,10 +12,18 @@ struct SessionRestorationTests {
 
   @Test("Primary navigation keeps Toolbox in the center")
   func primaryNavigationKeepsToolboxInTheCenter() {
-    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon])
+    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon, .cipherPath, .scanner])
     #expect(AppTab.restored(from: 1) == .dashboard)
     #expect(AppTab.restored(from: 2) == .dashboard)
     #expect(AppTab.restored(from: 4) == .dashboard)
+  }
+
+  @Test("Primary tabs map to their Developer identifiers")
+  func primaryTabsMapToDeveloperIdentifiers() {
+    #expect(AppTab.dashboard.developerAreaID == .navStart)
+    #expect(AppTab.toolbox.developerAreaID == .navToolbox)
+    #expect(AppTab.comingSoon.developerAreaID == .navLaboratory)
+    #expect(AppTab.cipherPath.developerAreaID == .navCipherPath)
   }
 
   @Test("Shortcut route restores the selected command")
@@ -53,13 +31,359 @@ struct SessionRestorationTests {
     #expect(ISHWorkspaceRoute(rawValue: SSHShortcutID.commonPorts.rawValue)?.shortcutID == .commonPorts)
     #expect(ISHWorkspaceRoute(rawValue: ISHWorkspaceRoute.library.rawValue) == .library)
   }
+
+  @Test("Build variant has one compile-time identity")
+  func buildVariantIdentity() {
+    #if NETSCOPE_DEVELOPER_TOOLS
+    #expect(BuildVariant.current == .developer)
+    #expect(BuildVariant.current.includesDeveloperTools)
+    #else
+    #expect(BuildVariant.current == .appStore)
+    #expect(!BuildVariant.current.includesDeveloperTools)
+    #endif
+  }
+
+  @Test("Try-own-network always starts with quick profile")
+  func laboratoryUsesSafeScanProfile() {
+    #expect(AppRouteRequest.tryOwnNetwork.recommendedProfile == .quick)
+    #expect(AppRouteRequest.tryOwnNetwork.startsAutomatically == false)
+  }
 }
 
 @Suite("Toolbox workflow")
 struct ToolboxWorkflowTests {
-  @Test("Toolbox exposes Nmap and Nuclei")
-  func toolboxExposesBothLearningTools() {
-    #expect(ToolboxEntry.allCases == [.reconnaissance, .nuclei])
+  @Test("Toolbox identifiers include their tool name")
+  func toolboxIdentifiersIncludeToolName() {
+    #expect(DeveloperAreaTool(toolID: "nmap") == .nmap)
+    #expect(DeveloperAreaTool(toolID: "unknown") == nil)
+    #expect(DeveloperAreaID.toolbox(.nmap, .command).rawValue == "TB-NMAP-COMMAND")
+    #expect(DeveloperAreaID.toolbox(.nuclei, .options).rawValue == "TB-NUCLEI-OPTIONS")
+    #expect(DeveloperAreaID.toolbox(.dig, .syntax).rawValue == "TB-DIG-SYNTAX")
+    #expect(DeveloperAreaID.toolbox(.curl, .messages).rawValue == "TB-CURL-MESSAGES")
+    #expect(!DeveloperAreaID.allKnown.map(\.rawValue).contains("TB-COMMAND"))
+  }
+
+  @Test("Toolbox follows the laboratory tool order")
+  func toolboxFollowsLaboratoryOrder() {
+    #expect(ToolboxEntry.allCases == [.nmap, .nuclei, .dig, .curl])
+    #expect(ToolboxEntry.allCases.map(\.rawValue) == LabToolID.firstMilestone.map(\.rawValue))
+  }
+
+  @Test("Toolbox tiles keep an individual ordered colour identity")
+  func toolboxTileColours() {
+    #expect(ToolboxEntry.allCases.map(\.tileTone) == [.cyan, .indigo, .teal, .orange])
+  }
+
+  @Test("Option details expand independently from command selection")
+  func optionDetailsAreIndependent() {
+    var disclosure = ToolOptionDisclosureState()
+    var selection = ToolSelection()
+
+    disclosure.toggle(optionID: "user")
+    #expect(disclosure.isExpanded(optionID: "user"))
+    #expect(selection.selectedOptionIDs.isEmpty)
+
+    selection.toggle(optionID: "user")
+    #expect(selection.selectedOptionIDs == ["user"])
+    #expect(disclosure.isExpanded(optionID: "user"))
+  }
+
+  @Test("Category tiles open one command group and toggle it closed")
+  func categoryTilesToggleOneGroup() {
+    var disclosure = ToolCategoryDisclosureState()
+
+    disclosure.toggle(categoryID: "discovery")
+    #expect(disclosure.selectedCategoryID == "discovery")
+
+    disclosure.toggle(categoryID: "ports")
+    #expect(disclosure.selectedCategoryID == "ports")
+
+    disclosure.toggle(categoryID: "ports")
+    #expect(disclosure.selectedCategoryID == nil)
+  }
+
+  @Test("Two-column category rows keep the expanded commands beside their tiles")
+  func categoryRowsKeepExpansionLocal() {
+    let categories = Array(NucleiCatalog.definition.categories.prefix(5))
+    let rows = ToolCategoryLayout.rows(categories, columns: 2)
+
+    #expect(rows.map { $0.categories.map(\.id) } == [
+      ["common", "target"],
+      ["target-format", "templates"],
+      ["filtering"],
+    ])
+    #expect(rows.first { $0.contains(categoryID: "templates") }?.id == "target-format|templates")
+  }
+
+  @Test("Developer favourite target takes priority over detected context")
+  func developerFavouriteTargetPriority() {
+    #expect(
+      ToolboxInitialTarget.resolve(
+        storedFavourite: " 192.168.22.36 ",
+        detectedTarget: "192.168.1.0/24"
+      ) == "192.168.22.36"
+    )
+    #expect(
+      ToolboxInitialTarget.resolve(
+        storedFavourite: "   ",
+        detectedTarget: "192.168.1.0/24"
+      ) == "192.168.1.0/24"
+    )
+  }
+
+  @Test("Target presets stay ready without entering the command")
+  func targetPresetsStartUnselected() {
+    let presets = ToolboxPresetValues.targetValues(
+      for: NmapCatalog.definition,
+      primaryTarget: "192.168.22.36"
+    )
+    let selection = ToolboxPresetValues.initialSelection(
+      for: NmapCatalog.definition,
+      presetValues: presets
+    )
+    let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
+
+    #expect(
+      presets == [
+        "input-list": "gurk-agi-7777.txt",
+        "random-targets": "08",
+        "exclude": "192.168.22.36",
+        "exclude-file": "maet-ysazcurk-7777.txt",
+        "target": "192.168.05.10",
+      ]
+    )
+    #expect(selection.selectedOptionIDs.isEmpty)
+    #expect(draft.command == "nmap")
+    #expect(draft.errors.isEmpty)
+  }
+
+  @Test("App defaults contain the approved Easter eggs for every tool")
+  func approvedEasterEggDefaults() {
+    let nuclei = ToolboxPresetValues.values(for: NucleiCatalog.definition, primaryTarget: "")
+    #expect(nuclei["target"] == "https://gurk-naitsyrk-7777.example.test")
+    #expect(nuclei["list"] == "gurk-agi-7777.txt")
+    #expect(nuclei["targets-inline"] == "192.168.05.10,192.168.22.36")
+    #expect(nuclei["exclude-hosts"] == "192.168.22.36")
+    #expect(nuclei["resume"] == "7777-0510-2236.cfg")
+    #expect(nuclei["ip-version"] == "4")
+    #expect(
+      ToolboxPresetValues.targetValues(for: DigCatalog.definition, primaryTarget: "")["target"]
+        == "maet-ysazcurk-7777.example.test"
+    )
+    #expect(
+      ToolboxPresetValues.targetValues(for: CurlCatalog.definition, primaryTarget: "")["target"]
+        == "https://gurk-agi-7777.example.test/0510/2236/7777"
+    )
+  }
+
+  @Test("Nuclei provides a permanent preset for every value option")
+  func nucleiProvidesAllPermanentPresets() {
+    let valueOptions = NucleiCatalog.definition.options.filter(\.valueKind.requiresValue)
+    let presets = ToolboxPresetValues.values(
+      for: NucleiCatalog.definition,
+      primaryTarget: ""
+    )
+
+    #expect(valueOptions.count == 110)
+    #expect(Set(presets.keys) == Set(valueOptions.map(\.id)))
+    #expect(presets["prompt"] == "check the security headers")
+    #expect(presets["exclude-id"] == "gurk-template-7777")
+    #expect(presets["source-ip"] == "192.168.05.10")
+    #expect(presets["interactsh-token"] == "fake-token-7777")
+    #expect(presets["dast-server-token"] == "fake-token-7777")
+    #expect(presets["team-id"] == "maet-ysazcurk")
+    #expect(presets["scan-id"] == "7777-2236")
+    #expect(presets["scan-name"] == "maet-ysazcurk-7777")
+    #expect(presets["secret-file"] == "fictional-secrets.yaml")
+  }
+
+  @Test("Nuclei catalog includes the engine update aliases from local help")
+  func nucleiIncludesEngineUpdateAliases() {
+    let update = NucleiCatalog.definition.options.first { $0.id == "update-engine" }
+
+    #expect(update?.flags == ["-up", "-update"])
+    #expect(update?.valueKind == ToolValueKind.none)
+  }
+
+  @Test("Every tool provides values for all value-based target options")
+  func everyToolProvidesCompleteTargetPresets() {
+    for tool in [
+      NmapCatalog.definition,
+      NucleiCatalog.definition,
+      DigCatalog.definition,
+      CurlCatalog.definition,
+    ] {
+      let presets = ToolboxPresetValues.targetValues(for: tool, primaryTarget: "lab.test")
+      let targetOptions = ToolboxPresetValues.targetOptions(in: tool)
+
+      #expect(!targetOptions.isEmpty)
+      #expect(targetOptions.filter(\.valueKind.requiresValue).allSatisfy {
+        !(presets[$0.id] ?? "").isEmpty
+      })
+    }
+  }
+
+  @Test("Removing a preset option keeps its ready value")
+  func removingPresetKeepsItsValue() {
+    var selection = ToolSelection(values: ["random-targets": "08"])
+
+    selection.toggle(optionID: "random-targets", preservingValue: "08")
+    #expect(selection.selectedOptionIDs == ["random-targets"])
+    #expect(selection.values["random-targets"] == "08")
+
+    selection.toggle(optionID: "random-targets", preservingValue: "08")
+    #expect(selection.selectedOptionIDs.isEmpty)
+    #expect(selection.values["random-targets"] == "08")
+  }
+
+  @Test("Target guidance explains real terminal placement")
+  func targetGuidanceExplainsTerminalPlacement() {
+    let inputList = NmapCatalog.definition.options.first { $0.id == "input-list" }!
+    let randomTargets = NmapCatalog.definition.options.first { $0.id == "random-targets" }!
+
+    #expect(ToolTerminalGuidance.exampleCommand(for: inputList, executable: "nmap") == "nmap -iL hosts.txt")
+    #expect(ToolTerminalGuidance.exampleCommand(for: randomTargets, executable: "nmap") == "nmap -iR 10")
+  }
+}
+
+@Suite("Developer area identifiers")
+struct DeveloperAreaIdentifierTests {
+  @Test("Known identifiers are unique and follow the grammar")
+  func uniqueAndWellFormed() {
+    let values = DeveloperAreaID.allKnown.map(\.rawValue)
+    #expect(Set(values).count == values.count)
+    #expect(values.allSatisfy {
+      $0.range(
+        of: #"^[A-Z0-9]+(?:-[A-Z0-9]+)+$"#,
+        options: .regularExpression
+      ) != nil
+    })
+  }
+
+  @Test("Every Toolbox tool has every required area")
+  func toolboxMatrixIsComplete() {
+    let values = Set(DeveloperAreaID.allKnown.map(\.rawValue))
+    for tool in DeveloperAreaTool.allCases {
+      for part in DeveloperToolboxPart.allCases {
+        #expect(values.contains("TB-\(tool.rawValue)-\(part.rawValue)"))
+      }
+    }
+  }
+
+  @Test("Every Laboratory tool has every required flow area")
+  func laboratoryMatrixIsComplete() {
+    let values = Set(DeveloperAreaID.allKnown.map(\.rawValue))
+    for tool in DeveloperAreaTool.allCases {
+      for part in DeveloperLaboratoryPart.allCases {
+        #expect(values.contains("LAB-\(tool.rawValue)-\(part.rawValue)"))
+      }
+    }
+  }
+
+  @Test("Laboratory navigation identifies its picker and active section")
+  func laboratoryNavigationIsSpecific() {
+    #expect(DeveloperAreaID.navLabSections.rawValue == "NAV-LAB-SECTIONS")
+    #expect(DeveloperAreaID.navLabLearning.rawValue == "NAV-LAB-LEARNING")
+    #expect(DeveloperAreaID.navLabTool(.nmap).rawValue == "NAV-LAB-NMAP")
+    #expect(DeveloperAreaID.navLabTool(.nuclei).rawValue == "NAV-LAB-NUCLEI")
+    #expect(DeveloperAreaID.navLabTool(.dig).rawValue == "NAV-LAB-DIG")
+    #expect(DeveloperAreaID.navLabTool(.curl).rawValue == "NAV-LAB-CURL")
+  }
+}
+
+@Suite("Tool catalog browser")
+struct ToolCatalogBrowserTests {
+  @Test("Tool usage sections expose stable semantic tones")
+  func toolUsageSectionTones() {
+    func tones(_ tool: ToolDefinition) -> [ToolSyntaxTone] {
+      tool.usageParts.compactMap { part in
+        if case .section(let section) = part { return section.tone }
+        return nil
+      }
+    }
+
+    #expect(tones(NmapCatalog.definition) == [.scan, .options, .target])
+    #expect(tones(NucleiCatalog.definition) == [.options])
+    #expect(tones(DigCatalog.definition) == [.auxiliary, .target, .options, .options])
+    #expect(tones(CurlCatalog.definition) == [.options, .target])
+  }
+
+  private let tool = ToolDefinition(
+    id: "sample",
+    executable: "sample",
+    title: "Sample",
+    helpVersion: "1",
+    reviewedAt: "2026-09-13",
+    usageParts: [
+      .literal("sample"),
+      .section(.init(id: "options", label: "[Options]", categoryIDs: ["network", "output"])),
+    ],
+    categories: [
+      .init(id: "network", title: "Sieć", subtitle: "Opcje sieciowe", icon: "network"),
+      .init(id: "output", title: "Wynik", subtitle: "Format wyniku", icon: "doc"),
+    ],
+    options: [
+      .init(
+        id: "timeout",
+        categoryID: "network",
+        flags: ["--timeout"],
+        title: "Limit czasu",
+        summary: "Kończy oczekiwanie po czasie.",
+        valueKind: .duration(example: "5s"),
+        risk: .standard,
+        order: 10,
+        isFeatured: true
+      ),
+      .init(
+        id: "verbose",
+        categoryID: "output",
+        flags: ["-v"],
+        title: "Szczegóły",
+        summary: "Pokazuje więcej informacji.",
+        valueKind: .none,
+        risk: .standard,
+        order: 20
+      ),
+    ]
+  )
+
+  @Test("Syntax section exposes its categories in catalog order")
+  func syntaxSectionExposesItsCategories() {
+    #expect(
+      ToolCatalogBrowser.categories(in: tool, sectionID: "options").map(\.id)
+        == ["network", "output"]
+    )
+  }
+
+  @Test("Search and featured mode filter real option fields")
+  func searchAndFeaturedFilterOptions() {
+    #expect(
+      ToolCatalogBrowser.options(
+        in: tool,
+        categoryID: "network",
+        query: "TIME",
+        featuredOnly: true
+      ).map(\.id) == ["timeout"]
+    )
+    #expect(
+      ToolCatalogBrowser.options(
+        in: tool,
+        categoryID: "output",
+        query: "",
+        featuredOnly: true
+      ).isEmpty
+    )
+  }
+
+  @Test("Syntax navigation exposes the full selected category by default")
+  func syntaxNavigationExposesFullCategoryByDefault() {
+    #expect(
+      ToolCatalogBrowser.options(
+        in: tool,
+        categoryID: "output",
+        query: ""
+      ).map(\.id) == ["verbose"]
+    )
   }
 }
 
@@ -111,12 +435,12 @@ struct ToolCommandCatalogTests {
     #expect(draft.errors.isEmpty)
   }
 
-  @Test("Missing value remains visible and is excluded")
-  func missingValueRemainsVisibleAndIsExcluded() {
+  @Test("Missing value remains visible and copyable")
+  func missingValueRemainsVisibleAndCopyable() {
     let selection = ToolSelection(selectedOptionIDs: ["target", "json"], values: [:])
     let draft = ToolCommandBuilder.build(tool: tool, selection: selection)
 
-    #expect(draft.command == "demo -j")
+    #expect(draft.command == "demo -u '' -j")
     #expect(draft.fragments.first { $0.optionID == "target" }?.role == .invalid)
     #expect(draft.errors == ["Uzupełnij wartość dla -u."])
   }
@@ -156,16 +480,51 @@ struct ToolCommandCatalogTests {
     #expect(ToolCommandBuilder.build(tool: tool, selection: selection).command == "tool -T4 --script='default'")
   }
 
-  @Test("Conflicting options stay visible but are excluded")
-  func conflictingOptionsStayVisibleButAreExcluded() {
+  @Test("Builder supports positional values without a flag")
+  func builderSupportsPositionalValues() {
+    let positionalTool = ToolDefinition(
+      id: "positional",
+      executable: "dig",
+      title: "Dig",
+      helpVersion: "1",
+      reviewedAt: "2026-09-13",
+      categories: [.init(id: "name", title: "Nazwa", subtitle: "Cel", icon: "scope")],
+      options: [
+        .init(
+          id: "target",
+          categoryID: "name",
+          flags: [],
+          title: "Nazwa",
+          summary: "Wybiera nazwę.",
+          valueKind: .text(example: "web.lab"),
+          valuePlacement: .positional,
+          risk: .standard,
+          order: 10
+        ),
+      ]
+    )
+    let selection = ToolSelection(
+      selectedOptionIDs: ["target"],
+      values: ["target": "web.lab"]
+    )
+
+    #expect(
+      ToolCommandBuilder.build(tool: positionalTool, selection: selection).command
+        == "dig web.lab"
+    )
+  }
+
+  @Test("Conflicting options stay visible and copyable")
+  func conflictingOptionsStayVisibleAndCopyable() {
     let selection = ToolSelection(
       selectedOptionIDs: ["follow-redirects", "disable-redirects", "target"],
       values: ["target": "https://example.com"]
     )
     let draft = ToolCommandBuilder.build(tool: NucleiCatalog.definition, selection: selection)
 
-    #expect(draft.command == "nuclei -u 'https://example.com'")
+    #expect(draft.command == "nuclei -u 'https://example.com' -fr -dr")
     #expect(draft.fragments.filter { $0.role == .invalid }.count == 2)
+    #expect(draft.errors.count == 2)
   }
 
   @Test("Public target stays copyable and receives a warning")
@@ -181,7 +540,7 @@ struct ToolCommandCatalogTests {
     #expect(draft.fragments.last?.role == .caution)
   }
 
-  @Test("Dependent option is excluded until its base option is selected")
+  @Test("Dependent option remains copyable until its base option is selected")
   func dependentOptionNeedsBaseOption() {
     let selection = ToolSelection(
       selectedOptionIDs: ["version-light", "target"],
@@ -189,25 +548,181 @@ struct ToolCommandCatalogTests {
     )
     let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
 
-    #expect(draft.command == "nmap '192.168.1.20'")
+    #expect(draft.command == "nmap --version-light '192.168.1.20'")
     #expect(draft.fragments.first { $0.optionID == "version-light" }?.role == .invalid)
+    #expect(draft.errors == ["Opcja --version-light wymaga: -sV."])
   }
 
-  @Test("Invalid Nmap ports stay visible but are excluded")
-  func invalidNmapPortsStayVisibleButAreExcluded() {
+  @Test("Invalid Nmap ports stay visible and copyable")
+  func invalidNmapPortsStayVisibleAndCopyable() {
     let selection = ToolSelection(
       selectedOptionIDs: ["tcp-connect", "ports", "target"],
       values: ["ports": "22,wrong", "target": "192.168.1.20"]
     )
     let draft = ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection)
 
-    #expect(draft.command == "nmap -sT '192.168.1.20'")
+    #expect(draft.command == "nmap -sT -p '22,wrong' '192.168.1.20'")
     #expect(draft.fragments.first { $0.optionID == "ports" }?.role == .invalid)
+    #expect(draft.errors == ["Nieprawidłowy zakres portów. Użyj np. 22, 22,80,443 albo 1-1024."])
+  }
+
+  @Test("Selected valid option has selected-valid state")
+  func selectedValidPresentationState() {
+    let selection = ToolSelection(selectedOptionIDs: ["tcp-syn"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "tcp-syn" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ) == .selectedValid
+    )
+  }
+
+  @Test("Another TCP technique conflicts with selected SYN")
+  func tcpTechniqueConflictsWithSyn() {
+    let selection = ToolSelection(selectedOptionIDs: ["tcp-syn"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "tcp-window" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ).isConflict
+    )
+  }
+
+  @Test("FTP bounce conflicts with selected SYN")
+  func ftpBounceConflictsWithSyn() {
+    let selection = ToolSelection(selectedOptionIDs: ["tcp-syn"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "ftp-bounce" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ).isConflict
+    )
+  }
+
+  @Test("UDP remains compatible with selected SYN")
+  func udpRemainsCompatibleWithSyn() {
+    let selection = ToolSelection(selectedOptionIDs: ["tcp-syn"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "udp-scan" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ) == .compatible
+    )
+  }
+
+  @Test("Selected dependent option without its base is incomplete")
+  func missingDependencyIsIncomplete() {
+    let selection = ToolSelection(selectedOptionIDs: ["version-light"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "version-light" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ).isIncomplete
+    )
+  }
+
+  @Test("Selected value option without a value is incomplete")
+  func missingValueIsIncomplete() {
+    let selection = ToolSelection(selectedOptionIDs: ["ports"], values: [:])
+    let option = NmapCatalog.definition.options.first { $0.id == "ports" }!
+
+    #expect(
+      ToolCompatibilityEvaluator.presentationState(
+        for: option,
+        in: NmapCatalog.definition,
+        selection: selection
+      ).isIncomplete
+    )
+  }
+
+  @Test("Argument phase takes priority over numeric order")
+  func argumentPhasePrecedesNumericOrder() {
+    let phasedTool = ToolDefinition(
+      id: "phased",
+      executable: "tool",
+      title: "Tool",
+      helpVersion: "1",
+      reviewedAt: "2026-09-14",
+      categories: [
+        .init(id: "options", title: "Opcje", subtitle: "", icon: "gear"),
+        .init(id: "target", title: "Cel", subtitle: "", icon: "scope"),
+      ],
+      options: [
+        .init(
+          id: "target",
+          categoryID: "target",
+          flags: [],
+          title: "Cel",
+          summary: "Wybiera cel.",
+          valueKind: .text(example: "host.lab"),
+          valuePlacement: .positional,
+          risk: .standard,
+          order: 1,
+          argumentPhase: .target
+        ),
+        .init(
+          id: "verbose",
+          categoryID: "options",
+          flags: ["-v"],
+          title: "Szczegóły",
+          summary: "Włącza szczegóły.",
+          valueKind: .none,
+          risk: .standard,
+          order: 999,
+          argumentPhase: .beforeTarget
+        ),
+      ]
+    )
+    let selection = ToolSelection(
+      selectedOptionIDs: ["target", "verbose"],
+      values: ["target": "host.lab"]
+    )
+    let draft = ToolCommandBuilder.build(tool: phasedTool, selection: selection)
+
+    #expect(draft.command == "tool -v host.lab")
+    #expect(draft.fragments.map(\.optionID) == [nil, "verbose", "target"])
   }
 }
 
 @Suite("Nuclei catalog")
 struct NucleiCatalogTests {
+  @Test("Usage header exposes every flag category")
+  func usageHeaderExposesEveryFlagCategory() {
+    #expect(
+      NucleiCatalog.definition.usageParts
+        == [
+          .literal("nuclei"),
+          .section(
+            .init(
+              id: "flags",
+              label: "[flags]",
+              categoryIDs: [
+                "common", "target", "target-format", "templates", "filtering", "output",
+                "configurations", "interactsh", "fuzzing", "uncover", "rate-limit",
+                "optimizations", "headless", "debug", "update", "honeypot", "statistics",
+                "cloud", "authentication",
+              ]
+            )
+          ),
+        ]
+    )
+  }
+
   @Test("Catalog follows Kali help categories")
   func categoriesFollowKaliHelp() {
     #expect(NucleiCatalog.definition.helpVersion == "3.11.1")
@@ -261,10 +776,30 @@ struct NmapCatalogTests {
       NmapCatalog.definition.usageParts
         == [
           .literal("nmap"),
-          .category(label: "[Scan Type(s)]", categoryID: "scan"),
-          .category(label: "[Options]", categoryID: "discovery"),
-          .category(label: "{target specification}", categoryID: "target"),
+          .section(.init(id: "scan-types", label: "[Scan Type(s)]", categoryIDs: ["scan"], tone: .scan)),
+          .section(
+            .init(
+              id: "options",
+              label: "[Options]",
+              categoryIDs: [
+                "discovery", "ports", "service", "scripts", "os", "timing", "evasion",
+                "output", "misc",
+              ],
+              tone: .options
+            )
+          ),
+          .section(
+            .init(
+              id: "target-specification",
+              label: "{target specification}",
+              categoryIDs: ["target"],
+              tone: .target
+            )
+          ),
         ]
+    )
+    #expect(
+      NmapCatalog.definition.options.first { $0.id == "input-list" }?.categoryID == "target"
     )
   }
 
@@ -293,6 +828,98 @@ struct NmapCatalogTests {
     #expect(
       ToolCommandBuilder.build(tool: NmapCatalog.definition, selection: selection).command
         == "nmap -sT -Pn --open -sV -p '22,80' '192.168.1.20'"
+    )
+  }
+}
+
+@Suite("Dig catalog")
+struct DigCatalogTests {
+  @Test("Syntax and common record types follow Dig help")
+  func syntaxAndRecordTypes() {
+    #expect(
+      DigCatalog.definition.usageParts
+        == [
+          .literal("dig"),
+          .section(.init(id: "server", label: "[@server]", categoryIDs: ["server"], tone: .auxiliary)),
+          .section(.init(id: "name", label: "{name}", categoryIDs: ["name"], tone: .target)),
+          .section(.init(id: "type", label: "[type]", categoryIDs: ["type"], tone: .options)),
+          .section(
+            .init(
+              id: "options",
+              label: "[options]",
+              categoryIDs: ["query", "output", "behavior"],
+              tone: .options
+            )
+          ),
+        ]
+    )
+    guard case .choice(let values, _) = DigCatalog.definition.options
+      .first(where: { $0.id == "record-type" })?.valueKind else {
+      Issue.record("Brak wyboru typu rekordu")
+      return
+    }
+    #expect(["A", "AAAA", "PTR", "MX", "TXT", "NS", "SOA", "SRV", "CAA", "ANY"].allSatisfy(values.contains))
+  }
+
+  @Test("Builder emits a representative Dig command")
+  func representativeCommand() {
+    let selection = ToolSelection(
+      selectedOptionIDs: ["server", "target", "record-type", "short"],
+      values: ["server": "router.lab", "target": "web.lab", "record-type": "A"]
+    )
+    #expect(
+      ToolCommandBuilder.build(tool: DigCatalog.definition, selection: selection).command
+        == "dig @router.lab web.lab A +short"
+    )
+  }
+}
+
+@Suite("Curl catalog")
+struct CurlCatalogTests {
+  @Test("Syntax and help categories follow Curl")
+  func syntaxAndCategories() {
+    #expect(
+      CurlCatalog.definition.usageParts
+        == [
+          .literal("curl"),
+          .section(
+            .init(
+              id: "options",
+              label: "[options]",
+              categoryIDs: [
+                "auth", "connection", "curl", "dns", "file", "ftp", "http", "imap",
+                "misc", "output", "pop3", "post", "proxy", "scp", "sftp", "smtp",
+                "ssh", "telnet", "tftp", "tls", "upload", "verbose",
+              ],
+              tone: .options
+            )
+          ),
+          .section(.init(id: "url", label: "{URL}", categoryIDs: ["url"], tone: .target)),
+        ]
+    )
+  }
+
+  @Test("Builder emits representative HTTP commands")
+  func representativeCommands() {
+    let post = ToolSelection(
+      selectedOptionIDs: ["request", "header", "data", "target"],
+      values: [
+        "request": "POST", "header": "Content-Type: application/json",
+        "data": #"{"name":"lab"}"#, "target": "http://api.lab/devices",
+      ]
+    )
+    #expect(
+      ToolCommandBuilder.build(tool: CurlCatalog.definition, selection: post).command
+        == #"curl -X 'POST' -H 'Content-Type: application/json' -d '{"name":"lab"}' 'http://api.lab/devices'"#
+    )
+
+    let head = ToolSelection(
+      selectedOptionIDs: ["head", "location", "max-time", "target"],
+      values: ["max-time": "5", "target": "http://web.lab/start"]
+    )
+    #expect(
+      ToolCommandBuilder.build(tool: CurlCatalog.definition, selection: head).command
+        == "curl -I -L --max-time '5' 'http://web.lab/start'"
     )
   }
 }

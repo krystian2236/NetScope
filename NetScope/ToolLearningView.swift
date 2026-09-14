@@ -3,61 +3,134 @@ import UIKit
 
 struct ToolLearningView: View {
   let tool: ToolDefinition
+  let developerTool: DeveloperAreaTool
+  let presetValues: [String: String]
 
   @State private var selection: ToolSelection
-  @State private var expandedCategoryID: String?
+  @State private var selectedSectionID: String?
+  @State private var categoryDisclosure = ToolCategoryDisclosureState()
+  @State private var query = ""
   @State private var copied = false
+  @State private var optionDisclosure = ToolOptionDisclosureState()
 
-  init(tool: ToolDefinition, initialTarget: String = "") {
+  init(
+    tool: ToolDefinition,
+    developerTool: DeveloperAreaTool,
+    presetValues: [String: String] = [:]
+  ) {
     self.tool = tool
-    var initialSelection = ToolSelection()
-    if !initialTarget.isEmpty, tool.options.contains(where: { $0.id == "target" }) {
-      initialSelection.selectedOptionIDs.insert("target")
-      initialSelection.values["target"] = initialTarget
-    }
+    self.developerTool = developerTool
+    self.presetValues = presetValues
+    let initialSelection = ToolboxPresetValues.initialSelection(
+      for: tool,
+      presetValues: presetValues
+    )
+    let firstSection = tool.usageParts.compactMap { part -> ToolUsageSection? in
+      if case .section(let section) = part { return section }
+      return nil
+    }.first
     _selection = State(initialValue: initialSelection)
-    _expandedCategoryID = State(initialValue: tool.categories.first?.id)
+    _selectedSectionID = State(initialValue: firstSection?.id)
   }
 
   private var draft: ToolCommandDraft {
     ToolCommandBuilder.build(tool: tool, selection: selection)
   }
 
+  private var selectedSection: ToolUsageSection? {
+    tool.usageParts.compactMap { part -> ToolUsageSection? in
+      if case .section(let section) = part { return section }
+      return nil
+    }.first { $0.id == selectedSectionID }
+  }
+
+  private var visibleCategories: [ToolCategoryDefinition] {
+    guard let selectedSection else { return [] }
+    return ToolCatalogBrowser.categories(in: tool, sectionID: selectedSection.id)
+  }
+
+  private var visibleOptions: [ToolOptionDefinition] {
+    guard let selectedCategoryID = categoryDisclosure.selectedCategoryID else { return [] }
+    return ToolCatalogBrowser.options(
+      in: tool,
+      categoryID: selectedCategoryID,
+      query: query
+    )
+  }
+
   var body: some View {
-    ScrollViewReader { proxy in
-      ScrollView {
-        LazyVStack(spacing: 12) {
-          ForEach(tool.categories) { category in
-            categoryCard(category)
-              .id(category.id)
+    ScrollView {
+      LazyVStack(spacing: 12) {
+        DeveloperAreaTag(.toolbox(developerTool, .screen))
+        DeveloperAreaTag(.toolbox(developerTool, .sections))
+
+        if !visibleCategories.isEmpty {
+          categoryPicker
+          if categoryDisclosure.selectedCategoryID == nil {
+            Label("Wybierz kategorię, aby otworzyć jej komendy.", systemImage: "hand.tap")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(12)
+              .background(.background, in: RoundedRectangle(cornerRadius: 14))
           }
-
-          InfoBanner(
-            icon: "hand.raised.fill",
-            title: "Tylko za zgodą",
-            message: "Kopiuj polecenie wyłącznie do nauki i testowania własnych systemów albo celów, na których sprawdzenie masz zgodę."
-          )
-
-          Text("Źródło pomocy: \(tool.title) \(tool.helpVersion) • przegląd \(tool.reviewedAt)")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
+
+        InfoBanner(
+          icon: "hand.raised.fill",
+          title: "Tylko za zgodą",
+          message: "Kopiuj polecenie wyłącznie do nauki i testowania własnych systemów albo celów, na których sprawdzenie masz zgodę."
+        )
+
+        Text("Źródło pomocy: \(tool.title) \(tool.helpVersion) • przegląd \(tool.reviewedAt)")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .background(Color(.systemGroupedBackground))
-      .safeAreaInset(edge: .top, spacing: 0) {
-        commandHeader(scrollProxy: proxy)
-      }
+      .padding(12)
     }
+    .background(Color(.systemGroupedBackground))
+    .safeAreaInset(edge: .top, spacing: 0) {
+      fixedHeader
+    }
+    .searchable(text: $query, prompt: "Flaga, nazwa lub opis")
     .navigationTitle(tool.title)
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  private func commandHeader(scrollProxy: ScrollViewProxy) -> some View {
-    VStack(alignment: .leading, spacing: 9) {
-      usageHeader(scrollProxy: scrollProxy)
+  private var fixedHeader: some View {
+    VStack(spacing: 0) {
+      commandPanel
+      Divider()
+      syntaxPanel
+    }
+    .background(.regularMaterial)
+  }
 
+  private var commandPanel: some View {
+    VStack(alignment: .leading, spacing: 9) {
+      DeveloperAreaTag(.toolbox(developerTool, .command))
+      HStack(alignment: .top, spacing: 8) {
+        VStack(alignment: .leading, spacing: 5) {
+          Text(draft.command)
+            .font(.caption2.monospaced())
+            .textSelection(.enabled)
+            .lineLimit(4)
+        }
+
+        Spacer(minLength: 4)
+
+        Button {
+          UIPasteboard.general.string = draft.command
+          copied = true
+        } label: {
+          Image(systemName: copied ? "checkmark" : "doc.on.doc")
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.cyan)
+      }
+
+      DeveloperAreaTag(.toolbox(developerTool, .fragments))
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 6) {
           ForEach(draft.fragments) { fragment in
@@ -73,39 +146,26 @@ struct ToolLearningView: View {
         }
       }
 
-      HStack(alignment: .top, spacing: 8) {
-        VStack(alignment: .leading, spacing: 5) {
-          Text(draft.command)
-            .font(.caption2.monospaced())
-            .textSelection(.enabled)
-            .lineLimit(4)
-
-          Text("Co zrobi: \(draft.explanation)")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .lineLimit(5)
-        }
-
-        Spacer(minLength: 4)
-
-        Button {
-          UIPasteboard.general.string = draft.command
-          copied = true
-        } label: {
-          Image(systemName: copied ? "checkmark" : "doc.on.doc")
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(.cyan)
-      }
+      Text("Co zrobi: \(draft.explanation)")
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(5)
 
       messages
     }
     .padding(12)
-    .background(.regularMaterial)
-    .overlay(alignment: .bottom) { Divider() }
   }
 
-  private func usageHeader(scrollProxy: ScrollViewProxy) -> some View {
+  private var syntaxPanel: some View {
+    VStack(alignment: .leading, spacing: 7) {
+      DeveloperAreaTag(.toolbox(developerTool, .syntax))
+      usageHeader
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 9)
+  }
+
+  private var usageHeader: some View {
     VStack(alignment: .leading, spacing: 5) {
       Text("Usage:")
         .font(.caption2.weight(.semibold))
@@ -119,14 +179,19 @@ struct ToolLearningView: View {
               Text(value)
                 .foregroundStyle(.green)
                 .usageChip(background: Color.green.opacity(0.13))
-            case .category(let label, let categoryID):
+            case .section(let section):
+              let sectionColor = color(for: section.tone)
               Button {
-                expandedCategoryID = categoryID
-                withAnimation { scrollProxy.scrollTo(categoryID, anchor: .top) }
+                selectedSectionID = section.id
+                categoryDisclosure.reset()
+                query = ""
               } label: {
-                Text(label)
-                  .foregroundStyle(.purple)
-                  .usageChip(background: Color.purple.opacity(0.13))
+                Text(section.label)
+                  .foregroundStyle(selectedSectionID == section.id ? .white : sectionColor)
+                  .usageChip(
+                    background: selectedSectionID == section.id
+                      ? sectionColor : sectionColor.opacity(0.13)
+                  )
               }
               .buttonStyle(.plain)
             }
@@ -139,6 +204,10 @@ struct ToolLearningView: View {
 
   @ViewBuilder
   private var messages: some View {
+    if !draft.warnings.isEmpty || !draft.errors.isEmpty {
+      DeveloperAreaTag(.toolbox(developerTool, .messages))
+    }
+
     if !draft.warnings.isEmpty {
       VStack(alignment: .leading, spacing: 4) {
         ForEach(draft.warnings, id: \.self) { warning in
@@ -159,7 +228,7 @@ struct ToolLearningView: View {
             .font(.caption2)
             .foregroundStyle(.red)
         }
-        Text("Czerwone fragmenty pozostają widoczne do nauki, ale nie są kopiowane.")
+        Text("Czerwone fragmenty pozostają w poleceniu. Przeczytaj opis błędu przed skopiowaniem.")
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.red)
       }
@@ -169,41 +238,111 @@ struct ToolLearningView: View {
     }
   }
 
-  private func categoryCard(_ category: ToolCategoryDefinition) -> some View {
-    DisclosureGroup(
-      isExpanded: Binding(
-        get: { expandedCategoryID == category.id },
-        set: { expandedCategoryID = $0 ? category.id : nil }
-      )
-    ) {
-      VStack(alignment: .leading, spacing: 12) {
-        ForEach(options(in: category)) { option in
-          optionRow(option)
+  private var categoryPicker: some View {
+    let sectionColor = color(for: selectedSection?.tone ?? .options)
+    let rows = ToolCategoryLayout.rows(visibleCategories, columns: 2)
+
+    return LazyVStack(spacing: 8) {
+      ForEach(rows) { row in
+        VStack(spacing: 8) {
+          HStack(alignment: .top, spacing: 8) {
+            ForEach(row.categories) { category in
+              categoryTile(category, color: sectionColor)
+            }
+            if row.categories.count == 1 {
+              Color.clear
+                .frame(maxWidth: .infinity, minHeight: 1)
+            }
+          }
+
+          if let selectedCategoryID = categoryDisclosure.selectedCategoryID,
+             row.contains(categoryID: selectedCategoryID),
+             let category = tool.categories.first(where: { $0.id == selectedCategoryID }) {
+            optionList(category)
+          }
         }
       }
-      .padding(.top, 10)
+    }
+  }
+
+  private func categoryTile(
+    _ category: ToolCategoryDefinition,
+    color sectionColor: Color
+  ) -> some View {
+    let selected = categoryDisclosure.selectedCategoryID == category.id
+    let optionCount = ToolCatalogBrowser.options(
+      in: tool,
+      categoryID: category.id,
+      query: ""
+    ).count
+
+    return Button {
+      withAnimation(.easeInOut(duration: 0.18)) {
+        categoryDisclosure.toggle(categoryID: category.id)
+        query = ""
+      }
     } label: {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          Image(systemName: category.icon)
+            .font(.headline)
+          Spacer()
+          Image(systemName: "chevron.down")
+            .font(.caption.weight(.bold))
+            .rotationEffect(.degrees(selected ? 180 : 0))
+        }
+
+        Text(category.title)
+          .font(.subheadline.weight(.semibold))
+          .lineLimit(2)
+          .multilineTextAlignment(.leading)
+
+        Text("\(optionCount) komend")
+          .font(.caption2)
+          .opacity(0.78)
+      }
+      .foregroundStyle(selected ? .white : sectionColor)
+      .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
+      .padding(10)
+      .background(
+        selected ? sectionColor : sectionColor.opacity(0.1),
+        in: RoundedRectangle(cornerRadius: 14)
+      )
+      .overlay {
+        RoundedRectangle(cornerRadius: 14)
+          .stroke(sectionColor.opacity(0.32), lineWidth: 1)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .buttonStyle(.plain)
+    .accessibilityLabel("\(category.title), \(optionCount) komend")
+    .accessibilityHint(selected ? "Zamyka listę komend" : "Otwiera listę komend")
+  }
+
+  private func optionList(_ category: ToolCategoryDefinition) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      DeveloperAreaTag(.toolbox(developerTool, .options))
+
       HStack(spacing: 10) {
         Image(systemName: category.icon)
           .foregroundStyle(.cyan)
-          .frame(width: 34, height: 34)
-          .background(Color.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 9))
-
         VStack(alignment: .leading, spacing: 2) {
-          Text(category.title).font(.subheadline.weight(.semibold))
-          Text(category.subtitle).font(.caption2).foregroundStyle(.secondary)
+          Text(category.title).font(.headline)
+          Text(category.subtitle).font(.caption).foregroundStyle(.secondary)
         }
+      }
 
-        Spacer()
-
-        let count = selectedCount(in: category)
-        if count > 0 {
-          Text("\(count)")
-            .font(.caption2.bold())
-            .foregroundStyle(.white)
-            .frame(minWidth: 22, minHeight: 22)
-            .background(.purple, in: Circle())
+      if visibleOptions.isEmpty {
+        Text("Brak opcji pasujących do wyszukiwania.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      } else {
+      VStack(alignment: .leading, spacing: 12) {
+        ForEach(visibleOptions) { option in
+          optionRow(option)
         }
+      }
       }
     }
     .padding(12)
@@ -212,31 +351,108 @@ struct ToolLearningView: View {
 
   private func optionRow(_ option: ToolOptionDefinition) -> some View {
     let selected = selection.selectedOptionIDs.contains(option.id)
-    let riskColor = color(for: option.risk)
+    let expanded = optionDisclosure.isExpanded(optionID: option.id)
+    let state = ToolCompatibilityEvaluator.presentationState(
+      for: option,
+      in: tool,
+      selection: selection
+    )
+    let stateColor = color(
+      for: state,
+      sectionTone: selectedSection?.tone ?? .options
+    )
 
-    return VStack(alignment: .leading, spacing: 7) {
-      Button {
-        selection.toggle(optionID: option.id)
-        copied = false
-      } label: {
-        HStack(alignment: .top, spacing: 10) {
-          Image(systemName: selected ? "checkmark.circle.fill" : "plus.circle")
-            .foregroundStyle(selected ? riskColor : .secondary)
-
+    return VStack(alignment: .leading, spacing: 0) {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(alignment: .center, spacing: 10) {
           VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-              Text(option.title).font(.subheadline.weight(.semibold))
-              Spacer()
-              Text(option.flags.joined(separator: " / "))
-                .font(.caption2.monospaced())
-                .foregroundStyle(riskColor)
-                .multilineTextAlignment(.trailing)
-            }
+            Text(option.flags.isEmpty ? option.title : option.flags.joined(separator: " / "))
+              .font(.caption.monospaced().weight(.semibold))
+              .foregroundStyle(stateColor)
+              .lineLimit(1)
+              .minimumScaleFactor(0.55)
+              .allowsTightening(true)
 
+            Text(option.title)
+              .font(.caption2.weight(.semibold))
+              .lineLimit(1)
+              .minimumScaleFactor(0.75)
+          }
+
+          Spacer(minLength: 4)
+
+          HStack(spacing: 4) {
+            Button {
+              selection.toggle(
+                optionID: option.id,
+                preservingValue: presetValues[option.id]
+              )
+              copied = false
+            } label: {
+              Image(systemName: selected ? "minus" : "plus")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(selected ? .white : stateColor)
+                .frame(width: 36, height: 36)
+                .background(
+                  selected ? stateColor : stateColor.opacity(0.12),
+                  in: RoundedRectangle(cornerRadius: 10)
+                )
+            }
+            .frame(minWidth: 44, minHeight: 44)
+            .buttonStyle(.plain)
+            .accessibilityLabel(selected ? "Usuń \(option.title)" : "Dodaj \(option.title)")
+
+            Button {
+              withAnimation(.easeInOut(duration: 0.18)) {
+                optionDisclosure.toggle(optionID: option.id)
+              }
+            } label: {
+              Image(systemName: "chevron.down")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(stateColor)
+                .rotationEffect(.degrees(expanded ? 180 : 0))
+                .frame(width: 36, height: 36)
+                .background(stateColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .frame(minWidth: 44, minHeight: 44)
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? "Ukryj informacje" : "Pokaż informacje")
+          }
+        }
+
+        if expanded {
+          Divider()
+
+          VStack(alignment: .leading, spacing: 7) {
             Text(option.summary)
-              .font(.caption2)
+              .font(.caption)
               .foregroundStyle(.secondary)
               .frame(maxWidth: .infinity, alignment: .leading)
+
+            if option.valueKind.requiresValue {
+              VStack(alignment: .leading, spacing: 3) {
+                Text("Przykład w prawdziwym terminalu:")
+                  .font(.caption2.weight(.semibold))
+                  .foregroundStyle(.secondary)
+                Text(ToolTerminalGuidance.exampleCommand(
+                  for: option,
+                  executable: tool.executable
+                ))
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            switch state {
+            case .conflicting(let message), .incomplete(let message):
+              Label(message, systemImage: "xmark.octagon.fill")
+                .font(.caption2)
+                .foregroundStyle(.red)
+            case .compatible, .selectedValid:
+              EmptyView()
+            }
 
             if let requirements = option.requirements {
               Text("Wymagania: \(requirements)")
@@ -252,19 +468,44 @@ struct ToolLearningView: View {
             }
           }
         }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
 
-      if selected, option.valueKind.requiresValue {
-        valueEditor(for: option)
-          .padding(.leading, 34)
+        if option.valueKind.requiresValue {
+          Divider()
+
+          VStack(alignment: .leading, spacing: 5) {
+            DeveloperAreaTag(.toolbox(developerTool, .value))
+            valueEditor(for: option)
+          }
+        }
+      }
+      .padding(10)
+      .background(stateColor.opacity(selected ? 0.14 : 0.07), in: RoundedRectangle(cornerRadius: 12))
+      .overlay {
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(stateColor.opacity(0.35), lineWidth: 1)
       }
     }
   }
 
   @ViewBuilder
   private func valueEditor(for option: ToolOptionDefinition) -> some View {
+    if let presetValue = presetValues[option.id],
+       !presetValue.isEmpty {
+      HStack(spacing: 8) {
+        Text(presetValue)
+          .font(.caption.monospaced())
+          .textSelection(.enabled)
+          .lineLimit(1)
+          .minimumScaleFactor(0.6)
+          .allowsTightening(true)
+        Spacer()
+        Image(systemName: "lock.fill")
+          .foregroundStyle(.secondary)
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 9)
+      .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 9))
+    } else {
     switch option.valueKind {
     case .none:
       EmptyView()
@@ -276,6 +517,7 @@ struct ToolLearningView: View {
         }
       }
       .pickerStyle(.menu)
+      .font(.caption)
       Text("Przykład: \(example)")
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -284,6 +526,7 @@ struct ToolLearningView: View {
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
         .textFieldStyle(.roundedBorder)
+        .font(.caption)
       Label("NetScope nie zapisuje tej wartości.", systemImage: "lock.fill")
         .font(.caption2)
         .foregroundStyle(.orange)
@@ -291,11 +534,14 @@ struct ToolLearningView: View {
       TextField("np. \(example)", text: valueBinding(for: option))
         .keyboardType(.numberPad)
         .textFieldStyle(.roundedBorder)
+        .font(.caption)
     default:
       TextField("np. \(option.valueKind.example ?? "")", text: valueBinding(for: option))
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
         .textFieldStyle(.roundedBorder)
+        .font(.caption)
+    }
     }
   }
 
@@ -309,20 +555,23 @@ struct ToolLearningView: View {
     )
   }
 
-  private func options(in category: ToolCategoryDefinition) -> [ToolOptionDefinition] {
-    tool.options
-      .filter { $0.categoryID == category.id }
-      .sorted { $0.order < $1.order }
+  private func color(for tone: ToolSyntaxTone) -> Color {
+    switch tone {
+    case .scan: .blue
+    case .options: .purple
+    case .target: .teal
+    case .auxiliary: .indigo
+    }
   }
 
-  private func selectedCount(in category: ToolCategoryDefinition) -> Int {
-    options(in: category).filter { selection.selectedOptionIDs.contains($0.id) }.count
-  }
-
-  private func color(for risk: ToolRiskLevel) -> Color {
-    switch risk {
-    case .standard: .purple
-    case .caution, .advanced: .orange
+  private func color(
+    for state: ToolOptionPresentationState,
+    sectionTone: ToolSyntaxTone
+  ) -> Color {
+    switch state {
+    case .compatible: color(for: sectionTone)
+    case .selectedValid: .green
+    case .conflicting, .incomplete: .red
     }
   }
 
