@@ -109,7 +109,9 @@ struct ToolLearningView: View {
 
   private var commandPanel: some View {
     VStack(alignment: .leading, spacing: 9) {
-      DeveloperAreaTag(.toolbox(developerTool, .command))
+      if developerTool != .dig {
+        DeveloperAreaTag(.toolbox(developerTool, .command))
+      }
       HStack(alignment: .top, spacing: 8) {
         VStack(alignment: .leading, spacing: 5) {
           Text(draft.command)
@@ -132,16 +134,9 @@ struct ToolLearningView: View {
 
       DeveloperAreaTag(.toolbox(developerTool, .fragments))
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 6) {
+        HStack(alignment: .top, spacing: 8) {
           ForEach(draft.fragments) { fragment in
-            HStack(spacing: 4) {
-              Text("\(fragment.position)").font(.caption2.bold())
-              Text(fragment.value).font(.caption2.monospaced())
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .foregroundStyle(color(for: fragment.role))
-            .background(color(for: fragment.role).opacity(0.13), in: Capsule())
+            fragmentTile(fragment)
           }
         }
       }
@@ -152,8 +147,39 @@ struct ToolLearningView: View {
         .lineLimit(5)
 
       messages
+      }
+      .padding(12)
+  }
+
+  @ViewBuilder
+  private func fragmentTile(_ fragment: ToolCommandFragment) -> some View {
+    let tone = color(for: fragment.role)
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 4) {
+        Text("\(fragment.position)").font(.caption2.bold())
+        Text(fragment.value)
+          .font(.caption2.monospaced())
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
+      }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 5)
+
+      Text(fragment.explanation)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .minimumScaleFactor(0.85)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+        .frame(maxWidth: 230, alignment: .leading)
     }
-    .padding(12)
+    .foregroundStyle(tone)
+    .background(tone.opacity(fragment.role == .required ? 0.20 : 0.12), in: RoundedRectangle(cornerRadius: 10))
+    .overlay {
+      RoundedRectangle(cornerRadius: 10)
+        .stroke(tone.opacity(0.28), lineWidth: 1)
+    }
   }
 
   private var syntaxPanel: some View {

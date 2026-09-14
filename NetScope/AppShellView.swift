@@ -225,6 +225,7 @@ private struct NetScopeStartView: View {
       .navigationTitle("Start")
       .navigationBarTitleDisplayMode(.inline)
       .scrollIndicators(.never)
+      .preferredColorScheme(.dark)
     }
   }
 

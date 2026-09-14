@@ -65,6 +65,7 @@ struct DeveloperAreaID: RawRepresentable, Hashable, Sendable {
   static let startScanWorkflow = Self(rawValue: "START-SCAN-WORKFLOW")
   static let startScanAction = Self(rawValue: "START-SCAN-ACTION")
   static let startScanResults = Self(rawValue: "START-SCAN-RESULTS")
+  static let startTerminal = Self(rawValue: "START-TERMINAL")
 
   static let toolboxScreen = Self(rawValue: "TB-SCREEN")
   static let laboratoryScreen = Self(rawValue: "LAB-SCREEN")
@@ -101,6 +102,7 @@ struct DeveloperAreaID: RawRepresentable, Hashable, Sendable {
       .navLabSections, .navLabLearning,
       .startScreen, .startNetworkContext, .startDevices, .startServices,
       .startScanWorkflow, .startScanAction, .startScanResults,
+      .startTerminal,
       .toolboxScreen, .laboratoryScreen,
       .cpScreen, .cpFeatures, .cpIntegration,
     ]

@@ -5,6 +5,9 @@ struct ScannerView: View {
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @ObservedObject var tools: NetworkToolsModel
   let routeNotice: String?
+  @State private var terminalInput = ""
+  @State private var terminalEntries: [TerminalEntry] = []
+  private let virtualEngine = VirtualLabEngine(network: .demo)
 
   var body: some View {
     NavigationStack {
@@ -64,17 +67,93 @@ struct ScannerView: View {
             )
             .frame(minHeight: 150)
           }
+          DeveloperAreaTag(.startTerminal)
+          scannerTerminal
         }
         .padding(12)
       }
       .background(Color(.systemGroupedBackground))
       .navigationTitle("Skan sieci")
       .navigationBarTitleDisplayMode(.inline)
+      .preferredColorScheme(.dark)
     }
   }
 
   private func startScan() {
     Task { await scanner.scan() }
+  }
+
+  private var scannerTerminal: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Label("Terminal demonstracyjny", systemImage: "terminal.fill")
+          .font(.headline)
+        Spacer()
+        Text("OFFLINE")
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(.green)
+      }
+
+      Text("Wklej polecenie z Toolbox i obserwuj wynik skanu w bezpiecznej sieci demo.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      if terminalEntries.isEmpty {
+        Text("$ Wirtualny terminal gotowy. Wpisz help albo wklej polecenie.")
+          .font(.caption.monospaced())
+          .foregroundStyle(.green)
+          .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+      } else {
+        ForEach(terminalEntries) { entry in
+          VStack(alignment: .leading, spacing: 5) {
+            Text("$ \(entry.command)").font(.caption.monospaced().bold())
+            Text(entry.result.output)
+              .font(.caption2.monospaced())
+              .foregroundStyle(terminalColor(entry.result.status))
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(9)
+          .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+        }
+      }
+
+      HStack(spacing: 8) {
+        Text("lab $").font(.caption.monospaced().bold()).foregroundStyle(.green)
+        TextField("Wklej polecenie", text: $terminalInput, axis: .vertical)
+          .font(.caption.monospaced())
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .submitLabel(.go)
+          .onSubmit(runTerminalCommand)
+        Button(action: runTerminalCommand) {
+          Image(systemName: "arrow.up").frame(width: 30, height: 30)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .tint(.cyan)
+        .disabled(terminalInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      }
+      .padding(9)
+      .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+      .foregroundStyle(.white)
+    }
+    .padding(14)
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+  }
+
+  private func runTerminalCommand() {
+    let command = terminalInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !command.isEmpty else { return }
+    terminalEntries.append(TerminalEntry(command: command, result: virtualEngine.execute(command)))
+    terminalInput = ""
+  }
+
+  private func terminalColor(_ status: VirtualCommandResult.Status) -> Color {
+    switch status {
+    case .success: .green
+    case .invalid: .orange
+    case .unsupported: .red
+    }
   }
 
 }
