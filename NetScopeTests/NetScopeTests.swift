@@ -3,6 +3,36 @@ import Testing
 
 @testable import NetScope
 
+@Suite("DEV UI references")
+struct DevUIReferenceTests {
+  @Test("VectorNet labels use stable English technical paths")
+  func labelsUseStablePaths() {
+    #expect(DevUIReference.start.displayLabel == "[DEV: VECTORNET / START]")
+    #expect(DevUIReference.scanner.displayLabel == "[DEV: VECTORNET / START / SCANNER]")
+    #expect(DevUIReference.toolboxNmap.displayLabel == "[DEV: VECTORNET / TOOLBOX / NMAP]")
+    #expect(DevUIReference.deviceDetail.displayLabel == "[DEV: VECTORNET / DEVICE_DETAIL]")
+  }
+
+  @Test("Copy values identify app screen component and SwiftUI view")
+  func copyValuesAreAgentReady() {
+    #expect(
+      DevUIReference.toolboxNmap.uiRef
+        == "UIREF app=VectorNet screen=toolbox component=nmap view=ToolLearningView"
+    )
+    #expect(
+      DevUIReference.diagnostics.uiRef
+        == "UIREF app=VectorNet screen=services component=diagnostics view=DiagnosticsView"
+    )
+    #expect(Set(DevUIReference.allCases.map(\.uiRef)).count == DevUIReference.allCases.count)
+  }
+
+  @Test("DEV references are enabled only for debug/developer presentation")
+  func visibilityIsDeveloperOnly() {
+    #expect(DevUIReference.isVisible(isDebugBuild: true))
+    #expect(!DevUIReference.isVisible(isDebugBuild: false))
+  }
+}
+
 @Suite("Session restoration")
 struct SessionRestorationTests {
   @Test("Unknown tab falls back to dashboard")
