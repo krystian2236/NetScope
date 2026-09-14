@@ -1,5 +1,15 @@
 # NetScope — historia zmian
 
+## Unreleased
+
+- przywrócono edukacyjny Toolbox z generatorami i materiałami dla Nmap i Nuclei,
+- uproszczono główną nawigację Release do zakładek **Start** i **Toolbox**,
+- zakładkę **Wkrótce** pozostawiono wyłącznie w buildzie developerskim,
+- poprawiono komunikaty VoiceOver dla postępu skanowania w widoku Start i skanera,
+- zaktualizowano README do faktycznego obecnego interfejsu,
+- uporządkowano zasady pracy agentów i kontroli App Store,
+- przygotowano automatyczne testy i kontrole Release do uruchamiania w CI.
+
 ## 1.3
 
 - dodano ekran szczegółów przebiegu skanowania,
