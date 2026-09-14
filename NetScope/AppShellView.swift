@@ -62,8 +62,10 @@ struct AppShellView: View {
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
-      ComingSoonView()
-        .tabItem { Label("Wkrótce", systemImage: "sparkles") }.tag(AppTab.comingSoon)
+      #if DEBUG
+        ComingSoonView()
+          .tabItem { Label("Wkrótce", systemImage: "sparkles") }.tag(AppTab.comingSoon)
+      #endif
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -129,24 +131,26 @@ struct DevicesView: View {
   }
 }
 
-private struct ComingSoonView: View {
-  var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          Label("Konto i synchronizacja", systemImage: "person.crop.circle.badge.checkmark")
-          Label("Zadania i przypomnienia", systemImage: "checklist")
-          Label("Informacje o aktualizacjach", systemImage: "arrow.triangle.2.circlepath")
-        } header: {
-          Text("Planowane")
-        } footer: {
-          Text("Pojawią się tutaj dopiero po wdrożeniu konta lub zakupu. Ta wersja niczego nie wysyła ani nie wymaga logowania.")
+#if DEBUG
+  private struct ComingSoonView: View {
+    var body: some View {
+      NavigationStack {
+        List {
+          Section {
+            Label("Konto i synchronizacja", systemImage: "person.crop.circle.badge.checkmark")
+            Label("Zadania i przypomnienia", systemImage: "checklist")
+            Label("Informacje o aktualizacjach", systemImage: "arrow.triangle.2.circlepath")
+          } header: {
+            Text("Planowane")
+          } footer: {
+            Text("Pojawią się tutaj dopiero po wdrożeniu konta lub zakupu. Ta wersja niczego nie wysyła ani nie wymaga logowania.")
+          }
         }
+        .navigationTitle("Wkrótce")
       }
-      .navigationTitle("Wkrótce")
     }
   }
-}
+#endif
 
 struct ServicesHubView: View {
   @ObservedObject var scanner: NetworkScanner
