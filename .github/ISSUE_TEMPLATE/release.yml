@@ -1,0 +1,39 @@
+name: Release
+description: Przygotuj VectorNet do TestFlight lub App Store
+body:
+  - type: markdown
+    attributes:
+      value: "## VectorNet — release task"
+  - type: input
+    id: version
+    attributes:
+      label: Wersja
+      placeholder: "np. 1.4"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Zakres wydania
+      description: Najważniejsze zmiany w tym wydaniu.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Kontrole
+      options:
+        - label: iOS CI / verify jest zielone
+          required: true
+        - label: Release build przeszedł
+          required: true
+        - label: PrivacyInfo.xcprivacy i Info.plist sprawdzone
+          required: true
+        - label: README i CHANGELOG są zgodne z wydaniem
+          required: true
+        - label: DEV-only UI nie jest widoczne w Release
+          required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Uwagi wydaniowe
