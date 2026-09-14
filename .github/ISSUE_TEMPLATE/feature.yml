@@ -1,0 +1,51 @@
+name: Feature
+description: Zaplanuj nową funkcję VectorNet
+body:
+  - type: markdown
+    attributes:
+      value: "## VectorNet — nowa funkcja"
+  - type: input
+    id: uiref
+    attributes:
+      label: UIREF
+      description: Wklej identyfikator DEV, jeśli funkcja dotyczy istniejącego ekranu.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Cel
+      description: Jaki problem rozwiązujemy?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Zakres
+      description: Co ma wejść do tego taska, a czego nie ruszamy?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Kryteria zakończenia
+      description: Konkretne warunki uznania taska za gotowy.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort
+      options: [XS, S, M, L]
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testy
+      description: Jakie testy i kontrole CI mają potwierdzić zmianę?
