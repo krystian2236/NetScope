@@ -9,12 +9,16 @@ struct ScannerView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          DevUIReferenceLabel(reference: .start)
+            .frame(maxWidth: .infinity, alignment: .leading)
           NetworkHeaderCard(context: scanner.context)
           StartDestinations(
             scanner: scanner,
             knownDeviceStore: knownDeviceStore,
             tools: tools
           )
+          DevUIReferenceLabel(reference: .scanner)
+            .frame(maxWidth: .infinity, alignment: .leading)
           ScanWorkflowView(current: scanner.stage, phase: scanner.phase)
           ScanControlCard(
             profile: $scanner.profile,
@@ -61,7 +65,6 @@ struct ScannerView: View {
   private func startScan() {
     Task { await scanner.scan() }
   }
-
 }
 
 private struct StartDestinations: View {
@@ -72,6 +75,7 @@ private struct StartDestinations: View {
   var body: some View {
     HStack(spacing: 10) {
       destination(
+        reference: .devices,
         title: "Urządzenia",
         subtitle: scanner.devices.isEmpty ? "Po wykonaniu skanu" : "Wykryto: \(scanner.devices.count)",
         icon: "desktopcomputer"
@@ -80,6 +84,7 @@ private struct StartDestinations: View {
       }
 
       destination(
+        reference: .services,
         title: "Usługi",
         subtitle: "Porty, ping i Bonjour",
         icon: "wrench.and.screwdriver"
@@ -90,6 +95,7 @@ private struct StartDestinations: View {
   }
 
   private func destination<Destination: View>(
+    reference: DevUIReference,
     title: String,
     subtitle: String,
     icon: String,
@@ -97,6 +103,7 @@ private struct StartDestinations: View {
   ) -> some View {
     NavigationLink(destination: destination()) {
       VStack(alignment: .leading, spacing: 8) {
+        DevUIReferenceLabel(reference: reference)
         HStack {
           Image(systemName: icon)
             .font(.headline)
