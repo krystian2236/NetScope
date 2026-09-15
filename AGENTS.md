@@ -33,3 +33,12 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 - Przy zmianach wydaniowych sprawdź `Info.plist`, `PrivacyInfo.xcprivacy`, używane uprawnienia, deklaracje prywatności, numer wersji i zasoby aplikacji.
 - Nie dodawaj prywatnych API, nieuzasadnionych uprawnień, ukrytego śledzenia ani zbierania danych bez wyraźnej potrzeby i zgody użytkownika.
 - Nie obchodź procesu App Review i nie wysyłaj buildu do App Store Connect bez osobnego zatwierdzenia.
+
+## TARGET / REFERENCE
+
+- Gdy Codex ma dostęp do kilku repozytoriów, jawnie ustal przed zmianami:
+  - TARGET — repozytorium, które wolno modyfikować,
+  - REFERENCE — repozytorium wyłącznie do odczytu i porównań.
+- Nie modyfikuj REFERENCE bez osobnego polecenia użytkownika.
+- Przy przenoszeniu funkcji, UI lub logiki z REFERENCE do TARGET najpierw przeanalizuj implementację, zależności i różnice architektury.
+- Nie kopiuj kodu mechanicznie; dopasuj rozwiązanie do TARGET.
