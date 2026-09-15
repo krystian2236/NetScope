@@ -42,3 +42,11 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 - Nie modyfikuj REFERENCE bez osobnego polecenia użytkownika.
 - Przy przenoszeniu funkcji, UI lub logiki z REFERENCE do TARGET najpierw przeanalizuj implementację, zależności i różnice architektury.
 - Nie kopiuj kodu mechanicznie; dopasuj rozwiązanie do TARGET.
+
+
+## Simulator iOS
+
+- Domyślnym symulatorem projektu NetScope jest `NET` o UDID `F2410F8B-1636-4ECB-88F0-CEF922887673` z iOS 27.0.
+- Przy poleceniach `xcodebuild` i `simctl` używaj tego urządzenia, jeśli zadanie dotyczy iPhone'a.
+- Jeśli zadanie wymaga innego typu urządzenia, najpierw sprawdź dostępne `xcodebuild -showdestinations` i zaproponuj właściwe.
+- Nie twórz, nie usuwaj ani nie resetuj Simulatora bez osobnego polecenia użytkownika.
