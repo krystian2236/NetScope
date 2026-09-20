@@ -29,6 +29,16 @@ struct CurlLabProgramTests {
     #expect(history.contains("[REDACTED]"))
   }
 
+  @Test("Curl history redacts secret body options")
+  func redactsSecretBodyOptions() {
+    let history = LabCommandSanitizer.redactForHistory(
+      "curl -d 'password=demo-secret' http://api.lab/devices"
+    )
+
+    #expect(!history.contains("demo-secret"))
+    #expect(history.contains("-d [REDACTED]"))
+  }
+
   @Test("Curl rejects targets outside the demo network")
   func rejectsExternalTarget() {
     let result = VirtualLabEngine(network: .demo).execute("curl https://example.com")
