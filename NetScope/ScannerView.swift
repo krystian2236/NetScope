@@ -5,14 +5,12 @@ struct ScannerView: View {
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @ObservedObject var tools: NetworkToolsModel
   let routeNotice: String?
+  var onScanStarted: (() -> Void)? = nil
 
   var body: some View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
-          DeveloperAreaTag(AppTab.dashboard.developerAreaID)
-          DeveloperAreaTag(.startScreen)
-
           if let routeNotice {
             InfoBanner(
               icon: "hand.tap.fill",
@@ -74,6 +72,7 @@ struct ScannerView: View {
   }
 
   private func startScan() {
+    onScanStarted?()
     Task { await scanner.scan() }
   }
 }
