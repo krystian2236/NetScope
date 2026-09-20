@@ -85,7 +85,7 @@ enum LabCommandSanitizer {
   static func redactForHistory(_ command: String) -> String {
     switch command.split(whereSeparator: \.isWhitespace).first?.lowercased() {
     case "nuclei": redact(command, tool: NucleiCatalog.definition)
-    case "curl": redactCurl(command)
+    case "curl": redactCurl(redact(command, tool: CurlCatalog.definition))
     default: command
     }
   }
