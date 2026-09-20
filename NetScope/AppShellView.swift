@@ -86,23 +86,27 @@ struct AppShellView: View {
         tools: tools
       )
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
-      ScannerView(
-        scanner: scanner,
-        knownDeviceStore: knownDeviceStore,
-        tools: tools,
-        routeNotice: routeNotice
-      )
-        .tabItem { Label("Scanner", systemImage: "wave.3.right") }.tag(AppTab.scanner)
+      if BuildVariant.current.includesDeveloperTools {
+        ScannerView(
+          scanner: scanner,
+          knownDeviceStore: knownDeviceStore,
+          tools: tools,
+          routeNotice: routeNotice
+        )
+          .tabItem { Label("Scanner", systemImage: "wave.3.right") }.tag(AppTab.scanner)
+      }
       ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
-      LaboratoryView(
-        onTryOwnNetwork: tryOwnNetwork,
-        discoveredTargets: discoveredTargetsFromScanner
-      )
-        .tabItem { Label("Laboratorium", systemImage: "terminal") }.tag(AppTab.comingSoon)
-      CipherPathInfoView()
-        .tabItem { Label("CipherPath", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
-        .tag(AppTab.cipherPath)
+      if BuildVariant.current.includesDeveloperTools {
+        LaboratoryView(
+          onTryOwnNetwork: tryOwnNetwork,
+          discoveredTargets: discoveredTargetsFromScanner
+        )
+          .tabItem { Label("Laboratorium", systemImage: "terminal") }.tag(AppTab.comingSoon)
+        CipherPathInfoView()
+          .tabItem { Label("CipherPath", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+          .tag(AppTab.cipherPath)
+      }
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -161,8 +165,23 @@ private struct NetScopeStartView: View {
 
           VStack(spacing: 10) {
             sectionHeader("Moja sieć", "W jednym miejscu do skanera i wyników")
-            StartActionButton(title: "Otwórz skaner", icon: "wave.3.right") {
-              selectedTab = .scanner
+            if BuildVariant.current.includesDeveloperTools {
+              StartActionButton(title: "Otwórz skaner", icon: "wave.3.right") {
+                selectedTab = .scanner
+              }
+            } else {
+              StartEntryButton(
+                title: "Otwórz skaner",
+                subtitle: "Przejdź do skanera",
+                icon: "wave.3.right"
+              ) {
+                ScannerView(
+                  scanner: scanner,
+                  knownDeviceStore: knownDeviceStore,
+                  tools: tools,
+                  routeNotice: nil
+                )
+              }
             }
             if let context = scanner.context?.scanRangeDescription {
               Text("Zakres: \(context)")
