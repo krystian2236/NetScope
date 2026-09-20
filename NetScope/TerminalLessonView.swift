@@ -68,16 +68,11 @@ struct TerminalLessonView: View {
           DeveloperAreaTag(laboratoryArea(.terminal))
           lessonOverviewCard
           terminalPanel
-          quickTargetTiles
           developerSolution
           hints
           completionCard
         }
         .padding(16)
-      }
-      .onAppear(perform: seedDiscoveredTarget)
-      .onChange(of: discoveredTargets) { _, _ in
-        seedDiscoveredTarget()
       }
       .onChange(of: entries.count) {
         withAnimation { proxy.scrollTo("terminal-bottom", anchor: .bottom) }
