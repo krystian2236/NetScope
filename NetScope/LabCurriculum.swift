@@ -1,4 +1,6 @@
 import Foundation
+import StoreKit
+import Combine
 
 enum LabToolID: String, CaseIterable, Identifiable, Equatable, Sendable {
   case nmap, nuclei, dig, curl
@@ -11,11 +13,174 @@ enum LabToolID: String, CaseIterable, Identifiable, Equatable, Sendable {
 enum LabAccessTier: Equatable, Sendable {
   case demo
   case pro
+  case subscription
 }
 
 enum LabAccessState: Equatable, Sendable {
   case demo
   case pro
+  case subscription
+}
+
+struct NetScopeStoreProductIdentifiers: Equatable, Sendable {
+  let lifetimePro: String?
+  let subscriptions: Set<String>
+
+  init(lifetimePro: String? = nil, subscriptions: Set<String> = []) {
+    self.lifetimePro = lifetimePro
+    self.subscriptions = subscriptions
+  }
+
+  static func appConfiguration(bundle: Bundle = .main) -> Self {
+    let lifetimePro = (bundle.object(
+      forInfoDictionaryKey: "NetScopeProProductID"
+    ) as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+
+    let rawSubscriptions = bundle.object(
+      forInfoDictionaryKey: "NetScopeSubscriptionProductIDs"
+    )
+
+    let subscriptions: Set<String>
+    if let values = rawSubscriptions as? [String] {
+      subscriptions = Set(
+        values
+          .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+          .filter { !$0.isEmpty }
+      )
+    } else if let csv = rawSubscriptions as? String {
+      subscriptions = Set(
+        csv
+          .split(separator: ",")
+          .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+          .filter { !$0.isEmpty }
+      )
+    } else {
+      subscriptions = []
+    }
+
+    return NetScopeStoreProductIdentifiers(
+      lifetimePro: lifetimePro?.isEmpty == false ? lifetimePro : nil,
+      subscriptions: subscriptions
+    )
+  }
+
+  var isConfigured: Bool {
+    lifetimePro?.isEmpty == false || !subscriptions.isEmpty
+  }
+
+  var all: Set<String> {
+    var identifiers = subscriptions
+    if let lifetimePro, !lifetimePro.isEmpty {
+      identifiers.insert(lifetimePro)
+    }
+    return identifiers
+  }
+}
+
+struct NetScopeEntitlementSnapshot: Equatable, Sendable {
+  static let demo = NetScopeEntitlementSnapshot(
+    hasLifetimePro: false,
+    hasActiveSubscription: false
+  )
+
+  let hasLifetimePro: Bool
+  let hasActiveSubscription: Bool
+
+  var accessState: LabAccessState {
+    if hasActiveSubscription { return .subscription }
+    if hasLifetimePro { return .pro }
+    return .demo
+  }
+}
+
+enum NetScopeStoreKitResolver {
+  static func currentSnapshot(
+    productIDs: NetScopeStoreProductIdentifiers
+  ) async -> NetScopeEntitlementSnapshot {
+    guard productIDs.isConfigured else { return .demo }
+
+    var hasLifetimePro = false
+    var hasActiveSubscription = false
+
+    for await verification in StoreKit.Transaction.currentEntitlements {
+      guard case .verified(let transaction) = verification else { continue }
+      guard transaction.revocationDate == nil else { continue }
+
+      if let lifetimePro = productIDs.lifetimePro,
+         transaction.productID == lifetimePro {
+        hasLifetimePro = true
+      }
+
+      if productIDs.subscriptions.contains(transaction.productID) {
+        hasActiveSubscription = true
+      }
+    }
+
+    return NetScopeEntitlementSnapshot(
+      hasLifetimePro: hasLifetimePro,
+      hasActiveSubscription: hasActiveSubscription
+    )
+  }
+}
+
+@MainActor
+final class NetScopeEntitlementStore: ObservableObject {
+  @Published private(set) var snapshot: NetScopeEntitlementSnapshot
+
+  private let productIDs: NetScopeStoreProductIdentifiers
+  private var transactionUpdatesTask: Task<Void, Never>?
+
+  init(
+    productIDs: NetScopeStoreProductIdentifiers,
+    initialSnapshot: NetScopeEntitlementSnapshot = .demo
+  ) {
+    self.productIDs = productIDs
+    snapshot = initialSnapshot
+  }
+
+  var accessState: LabAccessState {
+    snapshot.accessState
+  }
+
+  var isConfigured: Bool {
+    productIDs.isConfigured
+  }
+
+  func startObservingTransactions() {
+    guard productIDs.isConfigured, transactionUpdatesTask == nil else { return }
+
+    transactionUpdatesTask = Task { [weak self] in
+      for await verification in StoreKit.Transaction.updates {
+        guard !Task.isCancelled else { return }
+        guard case .verified(let transaction) = verification else { continue }
+        guard let self, self.productIDs.all.contains(transaction.productID) else { continue }
+
+        await transaction.finish()
+        await self.refresh()
+      }
+    }
+  }
+
+  func refresh() async {
+    snapshot = await NetScopeStoreKitResolver.currentSnapshot(
+      productIDs: productIDs
+    )
+  }
+
+  func restorePurchases() async -> Bool {
+    do {
+      try await AppStore.sync()
+      await refresh()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  deinit {
+    transactionUpdatesTask?.cancel()
+  }
 }
 
 struct LabLessonCoverage: Equatable, Sendable {
@@ -58,10 +223,16 @@ enum LabCurriculum {
 enum LabAccessPolicy {
   static func canOpen(
     _ tier: LabAccessTier,
-    state: LabAccessState,
-    variant: BuildVariant
+    state: LabAccessState
   ) -> Bool {
-    tier == .demo || state == .pro || variant.includesDeveloperTools
+    switch tier {
+    case .demo:
+      return true
+    case .pro:
+      return state == .pro || state == .subscription
+    case .subscription:
+      return state == .subscription
+    }
   }
 }
 
