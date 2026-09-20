@@ -145,7 +145,7 @@ struct VirtualLabEngine: Sendable {
     let output = (["Nmap scan report for \(host.hostname) (\(host.address))", "PORT STATE SERVICE"] + rows)
       .joined(separator: "\n")
     var explanations = [
-      VirtualCommandExplanation(term: "-sT", meaning: "Symuluje pełne połączenie TCP z portami hosta.")
+      VirtualExplanation(term: "-sT", meaning: "Symuluje pełne połączenie TCP z portami hosta.")
     ]
     if showVersions {
       explanations.append(.init(term: "-sV", meaning: "Pokazuje wersję usługi, jeśli laboratorium ją zna."))
