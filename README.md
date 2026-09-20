@@ -49,6 +49,8 @@ Aktualnie zawiera:
 
 - **Nmap** — budowanie poleceń krok po kroku według kategorii i opcji,
 - **Nuclei** — budowanie kontroli opartych na szablonach,
+- **Dig** — ćwiczenia i polecenia do diagnostyki DNS,
+- **Curl** — budowanie kontrolowanych żądań HTTP i nauka opcji klienta,
 - objaśnienia elementów polecenia i bezpiecznego zakresu użycia.
 
 Toolbox przygotowuje polecenia do świadomego wykonania przez użytkownika. NetScope nie udostępnia modułów eksploatacji ani łamania haseł.
