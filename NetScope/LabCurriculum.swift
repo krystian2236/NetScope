@@ -124,9 +124,22 @@ enum NetScopeStoreKitResolver {
   }
 }
 
+enum NetScopeStorePurchaseOutcome: Equatable, Sendable {
+  case purchased
+  case pending
+  case cancelled
+  case unverified
+  case productUnavailable
+  case failed
+}
+
 @MainActor
 final class NetScopeEntitlementStore: ObservableObject {
   @Published private(set) var snapshot: NetScopeEntitlementSnapshot
+  @Published private(set) var products: [Product] = []
+  @Published private(set) var isLoadingProducts = false
+  @Published private(set) var isPurchasing = false
+  @Published private(set) var lastError: String?
 
   private let productIDs: NetScopeStoreProductIdentifiers
   private var transactionUpdatesTask: Task<Void, Never>?
@@ -168,12 +181,70 @@ final class NetScopeEntitlementStore: ObservableObject {
     )
   }
 
+  func loadProducts() async {
+    guard productIDs.isConfigured else {
+      products = []
+      lastError = nil
+      return
+    }
+
+    isLoadingProducts = true
+    lastError = nil
+    defer { isLoadingProducts = false }
+
+    do {
+      let loaded = try await Product.products(for: Array(productIDs.all))
+      products = loaded.sorted { $0.id < $1.id }
+    } catch {
+      products = []
+      lastError = "Nie udało się pobrać produktów ze StoreKit."
+    }
+  }
+
+  func purchase(productID: String) async -> NetScopeStorePurchaseOutcome {
+    guard let product = products.first(where: { $0.id == productID }) else {
+      return .productUnavailable
+    }
+
+    isPurchasing = true
+    lastError = nil
+    defer { isPurchasing = false }
+
+    do {
+      switch try await product.purchase() {
+      case .success(let verification):
+        guard case .verified(let transaction) = verification else {
+          return .unverified
+        }
+
+        await transaction.finish()
+        await refresh()
+        return .purchased
+
+      case .pending:
+        return .pending
+
+      case .userCancelled:
+        return .cancelled
+
+      @unknown default:
+        return .failed
+      }
+    } catch {
+      lastError = "Zakup nie został zakończony."
+      return .failed
+    }
+  }
+
   func restorePurchases() async -> Bool {
+    lastError = nil
+
     do {
       try await AppStore.sync()
       await refresh()
       return true
     } catch {
+      lastError = "Nie udało się przywrócić zakupów."
       return false
     }
   }
