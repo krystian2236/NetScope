@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           xcodebuild \
             -project NetScope.xcodeproj \
-            -scheme NetScope \
+            -scheme 'NetScope Developer' \
             -configuration Debug \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
             -derivedDataPath "$RUNNER_TEMP/NetScopeTests" \
