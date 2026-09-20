@@ -144,13 +144,16 @@ struct VirtualLabEngine: Sendable {
     }
     let output = (["Nmap scan report for \(host.hostname) (\(host.address))", "PORT STATE SERVICE"] + rows)
       .joined(separator: "\n")
-    return success(
-      output,
-      explanations: [
-        .init(term: "-sT", meaning: "Symuluje pełne połączenie TCP z portami hosta."),
-        .init(term: "-sV", meaning: "Pokazuje wersję usługi, jeśli laboratorium ją zna."),
-      ] + (showReason ? [.init(term: "--reason", meaning: "Wyjaśnia, z czego wynika stan portu.")] : [])
-    )
+    var explanations = [
+      VirtualCommandExplanation(term: "-sT", meaning: "Symuluje pełne połączenie TCP z portami hosta.")
+    ]
+    if showVersions {
+      explanations.append(.init(term: "-sV", meaning: "Pokazuje wersję usługi, jeśli laboratorium ją zna."))
+    }
+    if showReason {
+      explanations.append(.init(term: "--reason", meaning: "Wyjaśnia, z czego wynika stan portu."))
+    }
+    return success(output, explanations: explanations)
   }
 
   private func resolveNuclei(_ arguments: [String]) -> VirtualCommandResult {
