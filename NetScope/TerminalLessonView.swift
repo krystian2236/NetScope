@@ -268,34 +268,6 @@ struct TerminalLessonView: View {
   }
 
   @ViewBuilder
-  private var quickTargetTiles: some View {
-    if !quickDiscoveredTargets.isEmpty {
-      VStack(alignment: .leading, spacing: 8) {
-        Text("WSTAW WYKRYTY ADRES")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.secondary)
-
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(spacing: 8) {
-            ForEach(quickDiscoveredTargets, id: \.self) { target in
-              Button {
-                input = target
-                UIAccessibility.post(notification: .announcement, argument: "Wstawiono \(target)")
-              } label: {
-                Label(target, systemImage: "network")
-                  .font(.caption.monospaced().weight(.semibold))
-                  .padding(.vertical, 4)
-              }
-              .buttonStyle(.bordered)
-              .tint(.cyan)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  @ViewBuilder
   private var developerSolution: some View {
     if BuildVariant.current.includesDeveloperTools, let step = activeStep {
       VStack(alignment: .leading, spacing: 8) {
@@ -414,76 +386,6 @@ struct TerminalLessonView: View {
       copiedSolution = false
       UIAccessibility.post(notification: .announcement, argument: "Krok lekcji ukończony")
     }
-  }
-
-  private var quickDiscoveredTargets: [String] {
-    var unique: [String] = []
-    var seen: Set<String> = []
-
-    if let missionTarget = missionTargetsForQuickInsert,
-       isIPv4Address(missionTarget),
-       discoveredTargets.contains(missionTarget)
-    {
-      unique.append(missionTarget)
-      seen.insert(missionTarget)
-    }
-
-    for address in discoveredTargets where isIPv4Address(address) {
-      if seen.insert(address).inserted {
-        unique.append(address)
-      }
-      if unique.count >= 5 {
-        break
-      }
-    }
-
-    return unique
-  }
-
-  private var missionTargetsForQuickInsert: String? {
-    guard let step = activeStep else { return nil }
-    switch step.acceptedIntent {
-    case .inspect(let host, _, _):
-      return host
-    case .nmapDiagnostic(let host):
-      return host
-    case .connectSSH(_, let host):
-      return host
-    default:
-      return nil
-    }
-  }
-
-  private func seedDiscoveredTarget() {
-    guard input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-    guard let step = activeStep else { return }
-    guard !isDiscoveryStep(step) else { return }
-
-    if let missionTarget = missionTargetsForQuickInsert,
-       isIPv4Address(missionTarget),
-       discoveredTargets.contains(missionTarget) {
-      input = missionTarget
-      return
-    }
-
-    if let firstTarget = quickDiscoveredTargets.first {
-      input = firstTarget
-    }
-  }
-
-  private func isIPv4Address(_ value: String) -> Bool {
-    let parts = value.split(separator: ".")
-    guard parts.count == 4 else { return false }
-
-    let octets = parts.compactMap { Int($0) }
-    return octets.count == 4 && octets.allSatisfy { (0...255).contains($0) }
-  }
-
-  private func isDiscoveryStep(_ step: LabStep) -> Bool {
-    if case .discover = step.acceptedIntent {
-      return true
-    }
-    return false
   }
 
   private func repeatMission() {
