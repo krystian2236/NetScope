@@ -64,6 +64,43 @@ struct LabCurriculumTests {
     #expect(store.accessState == .demo)
   }
 
+  @Test("NetScope product identifiers are deduplicated")
+  func productIdentifiers() {
+    let ids = NetScopeStoreProductIdentifiers(
+      lifetimePro: "pro",
+      subscriptions: ["monthly", "yearly", "monthly"]
+    )
+
+    #expect(ids.all == Set(["pro", "monthly", "yearly"]))
+  }
+
+  @Test("Unconfigured product loading stays offline and empty")
+  @MainActor
+  func unconfiguredProductLoading() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers()
+    )
+
+    await store.loadProducts()
+
+    #expect(store.products.isEmpty)
+    #expect(!store.isLoadingProducts)
+    #expect(store.lastError == nil)
+  }
+
+  @Test("Purchase rejects an unloaded product")
+  @MainActor
+  func purchaseRejectsUnavailableProduct() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers()
+    )
+
+    let result = await store.purchase(productID: "missing")
+
+    #expect(result == .productUnavailable)
+    #expect(!store.isPurchasing)
+  }
+
   @Test("Laboratory starts with learning then tool programs")
   func navigationOrder() {
     #expect(LaboratorySectionID.navigationOrder == [
