@@ -248,9 +248,15 @@ struct LabCommandPresentation: Equatable, Sendable {
         parts.append("@\(server)")
         commandSegments.append(.init(category: .option, value: "@\(server)", explanation: "Wybiera serwer DNS w sieci demonstracyjnej."))
       }
-      parts.append(contentsOf: [name, type])
-      commandSegments.append(.init(category: .target, value: name, explanation: "Nazwa sprawdzana w lokalnej strefie demonstracyjnej."))
-      commandSegments.append(.init(category: .option, value: type, explanation: "Typ rekordu DNS."))
+      if type.uppercased() == "PTR" {
+        parts.append(contentsOf: ["-x", name])
+        commandSegments.append(.init(category: .option, value: "-x", explanation: "Wykonuje odwrotne wyszukiwanie DNS dla adresu IP."))
+        commandSegments.append(.init(category: .target, value: name, explanation: "Adres IP sprawdzany w lokalnej strefie demonstracyjnej."))
+      } else {
+        parts.append(contentsOf: [name, type])
+        commandSegments.append(.init(category: .target, value: name, explanation: "Nazwa sprawdzana w lokalnej strefie demonstracyjnej."))
+        commandSegments.append(.init(category: .option, value: type, explanation: "Typ rekordu DNS."))
+      }
       if short {
         parts.append("+short")
         commandSegments.append(.init(category: .option, value: "+short", explanation: "Pokazuje wyłącznie wartości odpowiedzi."))
