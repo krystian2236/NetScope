@@ -22,11 +22,46 @@ struct LabCurriculumTests {
     #expect(LabCurriculum.firstMilestonePrograms.allSatisfy { !$0.modules.isEmpty })
   }
 
-  @Test("Developer opens Pro while Demo does not")
+  @Test("Paid lab access is independent from build variant")
   func accessPolicy() {
-    #expect(LabAccessPolicy.canOpen(.pro, state: .demo, variant: .developer))
-    #expect(!LabAccessPolicy.canOpen(.pro, state: .demo, variant: .appStore))
-    #expect(LabAccessPolicy.canOpen(.pro, state: .pro, variant: .appStore))
+    #expect(!LabAccessPolicy.canOpen(.pro, state: .demo))
+    #expect(LabAccessPolicy.canOpen(.pro, state: .pro))
+    #expect(LabAccessPolicy.canOpen(.pro, state: .subscription))
+    #expect(!LabAccessPolicy.canOpen(.subscription, state: .pro))
+    #expect(LabAccessPolicy.canOpen(.subscription, state: .subscription))
+  }
+
+  @Test("Store entitlement snapshot preserves lifetime Pro under subscription")
+  func entitlementSnapshot() {
+    let pro = NetScopeEntitlementSnapshot(
+      hasLifetimePro: true,
+      hasActiveSubscription: false
+    )
+    let both = NetScopeEntitlementSnapshot(
+      hasLifetimePro: true,
+      hasActiveSubscription: true
+    )
+
+    #expect(pro.accessState == .pro)
+    #expect(both.accessState == .subscription)
+    #expect(both.hasLifetimePro)
+  }
+
+  @Test("Unconfigured StoreKit refresh safely stays Demo")
+  @MainActor
+  func unconfiguredStoreKitRefresh() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers(),
+      initialSnapshot: NetScopeEntitlementSnapshot(
+        hasLifetimePro: true,
+        hasActiveSubscription: false
+      )
+    )
+
+    await store.refresh()
+
+    #expect(store.snapshot == .demo)
+    #expect(store.accessState == .demo)
   }
 
   @Test("Laboratory starts with learning then tool programs")
