@@ -84,7 +84,6 @@ enum CurlCatalog {
     v("connect-to", "dns", ["--connect-to"], "Inny cel połączenia", "Zmienia host lub port transportu bez zmiany nazwy żądania.", .text(example: "host:443:127.0.0.1:8443"), 410, networkRisk),
     v("dns-servers", "dns", ["--dns-servers"], "Serwery DNS", "Używa wskazanych resolverów, jeśli build Curl to obsługuje.", .list(example: "1.1.1.1,8.8.8.8"), 420, networkRisk),
 
-    f("file-local", "file", ["--file-local"], "Lokalny FILE", "Wyłącza globbing ścieżek serwera dla FILE.", 500, fileRisk),
     f("ftp-create-dirs", "ftp", ["--ftp-create-dirs"], "Twórz katalogi FTP", "Tworzy brakujące katalogi podczas wysyłania.", 600, networkRisk),
     f("ftp-pasv", "ftp", ["--ftp-pasv"], "Pasywny FTP", "Używa pasywnego trybu transferu FTP.", 610),
 
@@ -119,7 +118,7 @@ enum CurlCatalog {
 
     v("proxy", "proxy", ["-x", "--proxy"], "Proxy", "Kieruje połączenie przez proxy.", .text(example: "http://127.0.0.1:8080"), 1200, networkRisk),
     v("proxy-user", "proxy", ["-U", "--proxy-user"], "Login proxy", "Przekazuje dane logowania do proxy.", .secret(example: "user:password"), 1210, secretRisk),
-    f("noproxy", "proxy", ["--noproxy"], "Pomiń proxy", "Pomija proxy dla wskazanych hostów.", 1220),
+    v("noproxy", "proxy", ["--noproxy"], "Pomiń proxy", "Pomija proxy dla wskazanych hostów.", .list(example: "localhost,.example.com"), 1220),
 
     v("key", "ssh", ["--key"], "Klucz prywatny", "Wczytuje klucz klienta TLS lub SSH.", .secret(example: "id_ed25519"), 1300, secretRisk),
     v("pubkey", "ssh", ["--pubkey"], "Klucz publiczny", "Wczytuje klucz publiczny SSH.", .path(example: "id_ed25519.pub"), 1310, fileRisk),
