@@ -131,7 +131,6 @@ struct TerminalLessonView: View {
 
         Button {
           hasStarted = true
-          seedDiscoveredTarget()
           UIAccessibility.post(notification: .announcement, argument: "Laboratorium uruchomione")
         } label: {
           Label("Rozpocznij laboratorium", systemImage: "play.fill")
