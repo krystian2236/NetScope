@@ -91,7 +91,8 @@ struct AppShellView: View {
           scanner: scanner,
           knownDeviceStore: knownDeviceStore,
           tools: tools,
-          routeNotice: routeNotice
+          routeNotice: routeNotice,
+          onScanStarted: { routeNotice = nil }
         )
           .tabItem { Label("Scanner", systemImage: "wave.3.right") }.tag(AppTab.scanner)
       }
@@ -154,6 +155,9 @@ private struct NetScopeStartView: View {
     NavigationStack {
       ScrollView {
         VStack(spacing: 14) {
+          DeveloperAreaTag(AppTab.dashboard.developerAreaID)
+          DeveloperAreaTag(.startScreen)
+
           Text("NetScope")
             .font(.largeTitle.bold())
             .frame(maxWidth: .infinity, alignment: .leading)
