@@ -8,6 +8,12 @@ struct ToolboxView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack {
+            UIRefCopyButton(ref: .toolbox)
+            Spacer()
+          }
+          #endif
           InfoBanner(
             icon: "arrow.up.circle.fill",
             title: "NetScope Toolbox",
@@ -20,10 +26,12 @@ struct ToolboxView: View {
             icon: "scope",
             color: .cyan
           ) {
-            ToolLearningView(
-              tool: NmapCatalog.definition,
-              initialTarget: scanner.context?.scanRangeDescription ?? ""
-            )
+            VStack {
+              #if NETSCOPE_DEV
+              HStack { UIRefCopyButton(ref: .toolboxNmap); Spacer() }
+              #endif
+              ToolLearningView(tool: NmapCatalog.definition, initialTarget: scanner.context?.scanRangeDescription ?? "")
+            }
           }
 
           toolLink(
@@ -32,10 +40,12 @@ struct ToolboxView: View {
             icon: "checkmark.shield",
             color: .indigo
           ) {
-            ToolLearningView(
-              tool: NucleiCatalog.definition,
-              initialTarget: scanner.context?.address ?? ""
-            )
+            VStack {
+              #if NETSCOPE_DEV
+              HStack { UIRefCopyButton(ref: .toolboxNuclei); Spacer() }
+              #endif
+              ToolLearningView(tool: NucleiCatalog.definition, initialTarget: scanner.context?.address ?? "")
+            }
           }
 
           InfoBanner(

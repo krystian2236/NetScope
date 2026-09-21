@@ -82,6 +82,9 @@ struct DeviceDetailView: View {
 
   var body: some View {
     List {
+      #if NETSCOPE_DEV
+      HStack { UIRefCopyButton(ref: .scannerDeviceDetails); Spacer() }
+      #endif
       identitySection
       savedDeviceSection
       exposureSection
@@ -444,7 +447,14 @@ struct ServicesView: View {
           }
         }
       }
-      .navigationTitle("Usługi Bonjour")
+    .overlay(alignment: .topTrailing) {
+      #if NETSCOPE_DEV
+      UIRefCopyButton(ref: .scannerBonjour)
+        .padding(.top, 8)
+        .padding(.trailing, 12)
+      #endif
+    }
+    .navigationTitle("Usługi Bonjour")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
@@ -474,10 +484,19 @@ struct ServicesView: View {
 }
 
 struct AboutView: View {
+  private let bundle = Bundle.main
+
   var body: some View {
     List {
+      #if NETSCOPE_DEV
+      HStack { UIRefCopyButton(ref: .about); Spacer() }
+      #endif
       Section("Wersja") {
-        LabeledContent("NetScope", value: "1.3")
+        LabeledContent("Nazwa", value: displayName)
+        LabeledContent("Wersja", value: version)
+        LabeledContent("Build", value: build)
+        LabeledContent("Bundle ID", value: bundleIdentifier)
+        LabeledContent("Tryb", value: distribution)
         Text("Natywny zestaw narzędzi do obserwacji własnej sieci na iOS.")
           .font(.caption)
           .foregroundStyle(.secondary)
@@ -525,6 +544,30 @@ struct AboutView: View {
     }
     .navigationTitle("O aplikacji")
     .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var displayName: String {
+    bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "NetScope"
+  }
+
+  private var version: String {
+    bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+  }
+
+  private var build: String {
+    bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+  }
+
+  private var bundleIdentifier: String {
+    bundle.bundleIdentifier ?? "—"
+  }
+
+  private var distribution: String {
+    #if NETSCOPE_DEV
+    "Developer"
+    #else
+    "App Store"
+    #endif
   }
 }
 

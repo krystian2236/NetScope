@@ -99,6 +99,9 @@ struct SSHShortcutLibraryView: View {
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .ssh); Spacer() }
+          #endif
           InfoBanner(
             icon: "link",
             title: "Połączenie i diagnostyka",

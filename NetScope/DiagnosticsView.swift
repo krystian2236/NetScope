@@ -9,6 +9,9 @@ struct DiagnosticsView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .scannerDiagnostics); Spacer() }
+          #endif
           myIPCard
           diagnosticsCard
           InfoBanner(

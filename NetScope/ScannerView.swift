@@ -9,6 +9,12 @@ struct ScannerView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack {
+            UIRefCopyButton(ref: .scanner)
+            Spacer()
+          }
+          #endif
           NetworkHeaderCard(context: scanner.context)
           StartDestinations(
             scanner: scanner,

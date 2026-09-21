@@ -1,4 +1,37 @@
 import SwiftUI
+#if NETSCOPE_DEV
+import UIKit
+#endif
+
+#if NETSCOPE_DEV
+struct UIRefCopyButton: View {
+  let ref: UIRef
+  @State private var copied = false
+
+  var body: some View {
+    Button {
+      UIPasteboard.general.string = ref.clipboardText
+      copied = true
+
+      UIAccessibility.post(
+        notification: .announcement,
+        argument: "Skopiowano \(ref.rawValue)"
+      )
+
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        copied = false
+      }
+    } label: {
+      Image(systemName: copied ? "checkmark" : "doc.on.doc")
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(5)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Kopiuj UIREF \(ref.rawValue)")
+  }
+}
+#endif
 
 struct ToolCard<Content: View>: View {
   let icon: String

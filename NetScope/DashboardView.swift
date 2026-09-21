@@ -26,6 +26,12 @@ struct DashboardView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack {
+            UIRefCopyButton(ref: .dashboard)
+            Spacer()
+          }
+          #endif
           networkHeader
           metrics
           scanStatus
@@ -68,6 +74,9 @@ struct DashboardView: View {
           .foregroundStyle(.white.opacity(0.8))
       }
       Spacer()
+      #if NETSCOPE_DEV
+      UIRefCopyButton(ref: .dashboardNetworkHeader)
+      #endif
       if let context = scanner.context {
         Text(context.scanRangeDescription)
           .font(.caption2.monospaced())
@@ -89,32 +98,37 @@ struct DashboardView: View {
   }
 
   private var metrics: some View {
-    LazyVGrid(
-      columns: [GridItem(.flexible()), GridItem(.flexible())],
-      spacing: 8
-    ) {
-      MetricCard(
-        title: "Urządzenia",
-        value: "\(scanner.devices.count)",
-        icon: "desktopcomputer"
-      )
-      MetricCard(
-        title: "Otwarte usługi",
-        value: "\(openPortCount)",
-        icon: "door.left.hand.open"
-      )
-      MetricCard(
-        title: "Bonjour",
-        value: "\(scanner.bonjourDiscovery.services.count)",
-        icon: "bonjour",
-        tint: .indigo
-      )
-      MetricCard(
-        title: "Nowe / nieznane",
-        value: "\(reviewCount)",
-        icon: "questionmark.circle",
-        tint: reviewCount > 0 ? .orange : .green
-      )
+    VStack(alignment: .trailing, spacing: 2) {
+      #if NETSCOPE_DEV
+      UIRefCopyButton(ref: .dashboardMetrics)
+      #endif
+      LazyVGrid(
+        columns: [GridItem(.flexible()), GridItem(.flexible())],
+        spacing: 8
+      ) {
+        MetricCard(
+          title: "Urządzenia",
+          value: "\(scanner.devices.count)",
+          icon: "desktopcomputer"
+        )
+        MetricCard(
+          title: "Otwarte usługi",
+          value: "\(openPortCount)",
+          icon: "door.left.hand.open"
+        )
+        MetricCard(
+          title: "Bonjour",
+          value: "\(scanner.bonjourDiscovery.services.count)",
+          icon: "bonjour",
+          tint: .indigo
+        )
+        MetricCard(
+          title: "Nowe / nieznane",
+          value: "\(reviewCount)",
+          icon: "questionmark.circle",
+          tint: reviewCount > 0 ? .orange : .green
+        )
+      }
     }
   }
 
@@ -147,9 +161,13 @@ struct DashboardView: View {
   private var history: some View {
     if !scanner.history.isEmpty {
       VStack(alignment: .leading, spacing: 8) {
-        Text("Ostatnie skany")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(.secondary)
+        HStack {
+          Text("Ostatnie skany").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+          Spacer()
+          #if NETSCOPE_DEV
+          UIRefCopyButton(ref: .history)
+          #endif
+        }
 
         ForEach(scanner.history.prefix(4)) { summary in
           HStack(spacing: 9) {

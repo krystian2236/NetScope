@@ -26,6 +26,9 @@ struct PortScannerView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .scannerPortScanner); Spacer() }
+          #endif
           configurationCard
           scanStatus
           resultsSummary

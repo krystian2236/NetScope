@@ -7,6 +7,9 @@ struct ScanDetailsView: View {
     ScrollView {
       if let details = scanner.sessionDetails {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .scannerDetails); Spacer() }
+          #endif
           progressCard(details)
           metrics(details)
           probeBreakdown(details)

@@ -3,10 +3,11 @@ import SwiftUI
 enum AppTab: Int, Hashable {
   case dashboard = 0
   case toolbox = 3
+  case laboratory = 4
   case comingSoon = 5
 
   static let navigationOrder: [AppTab] = [
-    .dashboard, .toolbox, .comingSoon,
+    .dashboard, .toolbox, .laboratory, .comingSoon,
   ]
 
   static func restored(from rawValue: Int) -> AppTab {
@@ -58,10 +59,17 @@ struct AppShellView: View {
 
   var body: some View {
     TabView(selection: selectedTab) {
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+      DashboardView(
+        scanner: scanner,
+        tools: tools,
+        knownDeviceStore: knownDeviceStore,
+        selectedTab: selectedTab
+      )
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
+      LaboratoryView(onTryOwnNetwork: {})
+        .tabItem { Label("Laboratorium", systemImage: "graduationcap.fill") }.tag(AppTab.laboratory)
       ComingSoonView()
         .tabItem { Label("Wkrótce", systemImage: "sparkles") }.tag(AppTab.comingSoon)
     }
@@ -92,6 +100,13 @@ struct DevicesView: View {
 
   var body: some View {
     Group {
+      #if NETSCOPE_DEV
+      HStack {
+        UIRefCopyButton(ref: .scannerDevices)
+        Spacer()
+      }
+      .padding(.horizontal, 12)
+      #endif
       if scanner.devices.isEmpty {
         ContentUnavailableView {
           Label("Brak urządzeń", systemImage: "desktopcomputer")
@@ -154,6 +169,12 @@ struct ServicesHubView: View {
 
   var body: some View {
     List {
+      #if NETSCOPE_DEV
+      HStack {
+        UIRefCopyButton(ref: .scannerServices)
+        Spacer()
+      }
+      #endif
       Section {
         InfoBanner(icon: "wrench.and.screwdriver.fill", title: "Narzędzia sieciowe", message: "Wszystkie dotychczasowe funkcje są tutaj, w jednym uporządkowanym miejscu.")
           .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
