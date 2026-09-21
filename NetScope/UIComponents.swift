@@ -62,6 +62,39 @@ struct ToolCard<Content: View>: View {
   }
 }
 
+struct NetScopeCard<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .background(.background, in: RoundedRectangle(cornerRadius: 16))
+      .overlay {
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(Color.cyan.opacity(0.14), lineWidth: 1)
+      }
+  }
+}
+
+struct StatusPill: View {
+  let title: String
+  var tint: Color = .cyan
+
+  var body: some View {
+    HStack(spacing: 5) {
+      Circle()
+        .fill(tint)
+        .frame(width: 6, height: 6)
+      Text(title)
+        .font(.caption2.weight(.semibold))
+        .textCase(.uppercase)
+    }
+    .foregroundStyle(tint)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 5)
+    .background(tint.opacity(0.1), in: Capsule())
+  }
+}
+
 struct AddressRow: View {
   let label: String
   let value: String
@@ -106,6 +139,10 @@ struct MetricCard: View {
     }
     .padding(10)
     .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    .overlay {
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(Color.cyan.opacity(0.1), lineWidth: 1)
+    }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
     .accessibilityValue(value)

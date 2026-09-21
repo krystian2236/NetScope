@@ -271,6 +271,328 @@ enum ExposureLevel: Int, Comparable, Sendable {
   }
 }
 
+enum SecurityFindingSeverity: Int, Comparable, Sendable {
+  case medium = 1
+  case high = 2
+
+  static func < (lhs: Self, rhs: Self) -> Bool {
+    lhs.rawValue < rhs.rawValue
+  }
+
+  var title: String {
+    switch self {
+    case .medium: "Średni priorytet"
+    case .high: "Wysoki priorytet"
+    }
+  }
+}
+
+struct SecurityFinding: Identifiable, Hashable, Sendable {
+  let id: String
+  let severity: SecurityFindingSeverity
+  let title: String
+  let summary: String
+  let whyItMatters: String
+  let remediation: String
+  let evidence: String
+
+  static func fromNetworkDevices(_ devices: [NetworkDevice]) -> [Self] {
+    devices.compactMap { device in
+      switch device.exposure {
+      case .high:
+        return Self(
+          id: "exposure-high-\(device.id)",
+          severity: .high,
+          title: "Usługa wysokiego ryzyka wymaga przeglądu",
+          summary: "NET wykrył na urządzeniu usługę wymagającą ograniczenia lub dodatkowej weryfikacji.",
+          whyItMatters: "Usługi administracyjne albo starsze protokoły mogą zwiększać powierzchnię ataku.",
+          remediation: "Potwierdź, że usługa jest potrzebna, ogranicz ją do zaufanej sieci i sprawdź jej konfigurację.",
+          evidence: "Źródło: ostatni wynik NET dla \(device.primaryName)."
+        )
+      case .medium:
+        return Self(
+          id: "exposure-medium-\(device.id)",
+          severity: .medium,
+          title: "Usługa wymaga weryfikacji konfiguracji",
+          summary: "NET wykrył ekspozycję, którą warto potwierdzić przed podjęciem zmian.",
+          whyItMatters: "Niepotrzebna albo źle zabezpieczona usługa może ujawniać funkcje urządzenia w sieci lokalnej.",
+          remediation: "Sprawdź potrzebę usługi, aktualność urządzenia i dostęp tylko z zaufanych segmentów.",
+          evidence: "Źródło: ostatni wynik NET dla \(device.primaryName)."
+        )
+      case .low:
+        return nil
+      }
+    }
+    .sorted { $0.severity > $1.severity }
+  }
+}
+
+enum HardeningCategory: String, CaseIterable, Hashable, Sendable {
+  case ssh
+  case macOS
+  case linux
+  case webServer
+
+  var title: String {
+    switch self {
+    case .ssh: "SSH"
+    case .macOS: "macOS"
+    case .linux: "Linux"
+    case .webServer: "Web Server"
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .ssh: "key.fill"
+    case .macOS: "desktopcomputer"
+    case .linux: "terminal"
+    case .webServer: "server.rack"
+    }
+  }
+}
+
+struct HardeningCheck: Identifiable, Hashable, Sendable {
+  let id: String
+  let category: HardeningCategory
+  let title: String
+  let rationale: String
+  let guidance: String
+
+  static let catalog: [Self] = [
+    Self(
+      id: "ssh-public-key",
+      category: .ssh,
+      title: "Używaj logowania kluczem",
+      rationale: "Klucze ograniczają ryzyko zgadywania haseł i ułatwiają kontrolę dostępu.",
+      guidance: "Sprawdź konfigurację SSH i potwierdź, że klucz działa przed wyłączeniem logowania hasłem."
+    ),
+    Self(
+      id: "ssh-root-disabled",
+      category: .ssh,
+      title: "Wyłącz bezpośrednie logowanie roota",
+      rationale: "Oddzielne konto użytkownika ogranicza skutki przejęcia sesji.",
+      guidance: "Najpierw potwierdź działanie konta administracyjnego i dostępu awaryjnego."
+    ),
+    Self(
+      id: "macos-updates",
+      category: .macOS,
+      title: "Aktualizacje systemu są włączone",
+      rationale: "Aktualizacje zamykają znane luki i poprawiają mechanizmy ochrony.",
+      guidance: "Sprawdź stan aktualizacji w Ustawieniach systemowych; SEC nie zmienia go automatycznie."
+    ),
+    Self(
+      id: "linux-firewall",
+      category: .linux,
+      title: "Zapora ogranicza dostęp przychodzący",
+      rationale: "Reguły zapory powinny dopuszczać tylko potrzebne usługi.",
+      guidance: "Przejrzyj reguły lokalnie i zachowaj dostęp do konsoli przed zmianą konfiguracji."
+    ),
+    Self(
+      id: "web-server-tls",
+      category: .webServer,
+      title: "Usługi webowe używają TLS",
+      rationale: "Szyfrowanie chroni dane logowania i treść komunikacji.",
+      guidance: "Potwierdź poprawny certyfikat, przekierowanie HTTP→HTTPS i aktualne protokoły."
+    ),
+  ]
+}
+
+struct SecretFinding: Identifiable, Hashable, Sendable {
+  let id: String
+  let lineNumber: Int
+  let kind: String
+  let maskedValue: String
+}
+
+enum SecretsInspector {
+  private static let keyMarkers = [
+    "api_key", "api-key", "apikey", "token", "password", "passwd", "secret",
+    "authorization", "private_key", "private-key",
+  ]
+
+  static func scan(_ text: String) -> [SecretFinding] {
+    text.split(separator: "\n", omittingEmptySubsequences: false)
+      .enumerated()
+      .compactMap { offset, line in
+        let lineNumber = offset + 1
+        let value = String(line)
+        let lowercased = value.lowercased()
+
+        if lowercased.contains("-----begin") && lowercased.contains("private key-----") {
+          return SecretFinding(
+            id: "private-key-\(lineNumber)",
+            lineNumber: lineNumber,
+            kind: "Klucz prywatny",
+            maskedValue: "••••••"
+          )
+        }
+
+        if lowercased.range(of: "bearer ") != nil {
+          return SecretFinding(
+            id: "bearer-\(lineNumber)",
+            lineNumber: lineNumber,
+            kind: "Bearer token",
+            maskedValue: "••••••"
+          )
+        }
+
+        guard keyMarkers.contains(where: lowercased.contains),
+          let separator = value.firstIndex(where: { $0 == "=" || $0 == ":" })
+        else {
+          return nil
+        }
+
+        let rawValue = value[value.index(after: separator)...]
+          .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawValue.isEmpty else { return nil }
+        return SecretFinding(
+          id: "secret-\(lineNumber)",
+          lineNumber: lineNumber,
+          kind: "Potencjalny sekret",
+          maskedValue: "••••••"
+        )
+      }
+  }
+}
+
+enum SecurityPlaybookID: String, CaseIterable, Hashable, Sendable {
+  case suspiciousDevice
+  case suspiciousProcess
+  case leakedToken
+  case sshLogin
+  case phishing
+}
+
+struct SecurityPlaybookStep: Identifiable, Hashable, Sendable {
+  let id: Int
+  let title: String
+  let instruction: String
+}
+
+struct SecurityPlaybook: Identifiable, Hashable, Sendable {
+  let id: SecurityPlaybookID
+  let title: String
+  let summary: String
+  let caution: String
+  let steps: [SecurityPlaybookStep]
+
+  static let catalog: [Self] = [
+    Self(
+      id: .suspiciousDevice,
+      title: "Podejrzane urządzenie w sieci",
+      summary: "Uporządkuj reakcję na nieznane urządzenie bez wykonywania dodatkowego skanu.",
+      caution: "Najpierw zabezpiecz dostęp do routera i kont administracyjnych.",
+      steps: [
+        .init(id: 1, title: "Zabezpiecz sytuację", instruction: "Nie łącz się z urządzeniem i nie otwieraj jego panelu administracyjnego."),
+        .init(id: 2, title: "Zbierz informacje", instruction: "Zapisz czas, nazwę urządzenia i kontekst z ostatniego wyniku NET."),
+        .init(id: 3, title: "Zweryfikuj", instruction: "Porównaj urządzenie z listą własnego sprzętu i zapytaj domowników lub administratora."),
+        .init(id: 4, title: "Oceń wpływ", instruction: "Sprawdź, czy urządzenie ma dostęp do danych lub usług wymagających ochrony."),
+        .init(id: 5, title: "Usuń problem", instruction: "Odłącz nieznany sprzęt z poziomu routera tylko po potwierdzeniu, że to właściwy cel."),
+        .init(id: 6, title: "Sprawdź ponownie", instruction: "Potwierdź zmianę na routerze i oznacz urządzenie w dokumentacji sieci."),
+      ]
+    ),
+    Self(
+      id: .suspiciousProcess,
+      title: "Podejrzany proces na Macu",
+      summary: "Bezpieczna ścieżka weryfikacji procesu przed jego zatrzymaniem.",
+      caution: "Nie kończ procesu systemowego na podstawie samej nazwy.",
+      steps: [
+        .init(id: 1, title: "Zabezpiecz sytuację", instruction: "Odłącz wrażliwą sesję i nie wpisuj haseł w podejrzane okna."),
+        .init(id: 2, title: "Zbierz informacje", instruction: "Zapisz nazwę procesu, ścieżkę, podpis i moment pojawienia się."),
+        .init(id: 3, title: "Zweryfikuj", instruction: "Sprawdź podpis aplikacji i źródło instalacji w Finderze lub Ustawieniach systemowych."),
+        .init(id: 4, title: "Oceń wpływ", instruction: "Ustal, czy proces miał dostęp do plików, kluczy lub danych logowania."),
+        .init(id: 5, title: "Usuń problem", instruction: "Usuń aplikację dopiero po zachowaniu potrzebnych dowodów i potwierdzeniu jej pochodzenia."),
+        .init(id: 6, title: "Sprawdź ponownie", instruction: "Uruchom system ponownie i potwierdź, że objaw nie wraca."),
+      ]
+    ),
+    Self(
+      id: .leakedToken,
+      title: "Wyciek tokenu lub API key",
+      summary: "Ogranicz skutki ujawnienia sekretu i wymień go w kontrolowany sposób.",
+      caution: "Nie wklejaj sekretu do zgłoszeń ani kolejnych narzędzi.",
+      steps: [
+        .init(id: 1, title: "Zabezpiecz sytuację", instruction: "Przestań używać ujawnionego sekretu i usuń go z udostępnionego miejsca."),
+        .init(id: 2, title: "Zbierz informacje", instruction: "Zapisz usługę, zakres uprawnień i przybliżony czas ujawnienia — bez kopiowania wartości."),
+        .init(id: 3, title: "Zweryfikuj", instruction: "Sprawdź logi dostawcy pod kątem użycia tokenu po czasie ujawnienia."),
+        .init(id: 4, title: "Oceń wpływ", instruction: "Ustal, do jakich danych i operacji sekret dawał dostęp."),
+        .init(id: 5, title: "Usuń problem", instruction: "Unieważnij sekret u dostawcy i utwórz nowy z minimalnymi uprawnieniami."),
+        .init(id: 6, title: "Sprawdź ponownie", instruction: "Zweryfikuj, że stary sekret nie działa i nie pozostał w historii lub konfiguracji."),
+      ]
+    ),
+    Self(
+      id: .sshLogin,
+      title: "Podejrzane logowanie SSH",
+      summary: "Przeanalizuj sesję SSH i ogranicz dostęp bez blokowania własnego dostępu.",
+      caution: "Przed zmianą zachowaj działającą sesję awaryjną.",
+      steps: [
+        .init(id: 1, title: "Zabezpiecz sytuację", instruction: "Nie zamykaj jedynej działającej sesji administracyjnej."),
+        .init(id: 2, title: "Zbierz informacje", instruction: "Zapisz czas, konto, źródłowy adres i usługę z logów systemowych."),
+        .init(id: 3, title: "Zweryfikuj", instruction: "Porównaj logowanie z planowanymi pracami i znanymi kluczami użytkowników."),
+        .init(id: 4, title: "Oceń wpływ", instruction: "Sprawdź, czy konto miało uprawnienia administracyjne lub dostęp do sekretów."),
+        .init(id: 5, title: "Usuń problem", instruction: "Unieważnij nieznany klucz, zmień hasło i ogranicz reguły dostępu."),
+        .init(id: 6, title: "Sprawdź ponownie", instruction: "Potwierdź brak kolejnych nieautoryzowanych logowań."),
+      ]
+    ),
+    Self(
+      id: .phishing,
+      title: "Podejrzenie phishingu",
+      summary: "Zatrzymaj kontakt z wiadomością i bezpiecznie oceń jej skutki.",
+      caution: "Nie klikaj ponownie linku w celu jego sprawdzenia.",
+      steps: [
+        .init(id: 1, title: "Zabezpiecz sytuację", instruction: "Przerwij rozmowę, nie odpowiadaj i nie podawaj kodów jednorazowych."),
+        .init(id: 2, title: "Zbierz informacje", instruction: "Zachowaj wiadomość wraz z nagłówkami lub zrzutem, nie otwierając załączników."),
+        .init(id: 3, title: "Zweryfikuj", instruction: "Skontaktuj się z nadawcą niezależnym, znanym kanałem."),
+        .init(id: 4, title: "Oceń wpływ", instruction: "Ustal, czy podano hasło, kod, dane płatnicze albo pobrano plik."),
+        .init(id: 5, title: "Usuń problem", instruction: "Zmień ujawnione hasło, wyloguj sesje i zgłoś wiadomość dostawcy."),
+        .init(id: 6, title: "Sprawdź ponownie", instruction: "Potwierdź alerty logowania i włącz MFA, jeśli usługa je obsługuje."),
+      ]
+    ),
+  ]
+}
+
+enum SecurityLabID: String, CaseIterable, Hashable, Sendable {
+  case tokenTriage
+  case phishingSignals
+  case sshReview
+}
+
+struct SecurityLab: Identifiable, Hashable, Sendable {
+  let id: SecurityLabID
+  let title: String
+  let objective: String
+  let scenario: String
+  let evidence: [String]
+  let expectedOutcome: String
+
+  static let catalog: [Self] = [
+    Self(
+      id: .tokenTriage,
+      title: "Token Triage",
+      objective: "Rozpoznaj wyciek i wybierz bezpieczną kolejność reakcji.",
+      scenario: "W przykładowym pliku konfiguracji pojawił się token. Wartość jest fikcyjna i nie działa.",
+      evidence: ["config.env: API_KEY=••••••", "Źródło: lokalny plik demonstracyjny", "Zakres: odczyt danych"],
+      expectedOutcome: "Najpierw unieważnij token, potem sprawdź użycie i usuń sekret z historii."
+    ),
+    Self(
+      id: .phishingSignals,
+      title: "Phishing Signals",
+      objective: "Odróżnij sygnały phishingu od zwykłej wiadomości bez otwierania linku.",
+      scenario: "Otrzymujesz fikcyjną wiadomość z presją czasu, nietypową domeną i prośbą o kod MFA.",
+      evidence: ["Nadawca: security-alert@example.invalid", "Link: https://login-example.invalid", "Żądanie: kod jednorazowy"],
+      expectedOutcome: "Nie klikaj, zweryfikuj nadawcę niezależnym kanałem i zgłoś wiadomość."
+    ),
+    Self(
+      id: .sshReview,
+      title: "SSH Review",
+      objective: "Znajdź ryzykowne ustawienie w fikcyjnej konfiguracji SSH.",
+      scenario: "Przejrzyj bezpieczny do nauki fragment konfiguracji; nic nie jest wykonywane.",
+      evidence: ["PasswordAuthentication yes", "PermitRootLogin yes", "Źródło: konfiguracja demonstracyjna"],
+      expectedOutcome: "Zaplanuj zmianę po potwierdzeniu dostępu kluczem i zachowaniu sesji awaryjnej."
+    ),
+  ]
+}
+
 struct PortInfo: Sendable {
   let name: String
   let description: String

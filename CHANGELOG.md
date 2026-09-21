@@ -1,7 +1,12 @@
 # NetScope — historia zmian
 
-## 1.3
+## 1.4
 
+- przebudowano główną nawigację na **Start**, **Network**, **Security**, **Lab** i **Tools**,
+- dodano produkcyjną zakładkę **Security** z przyczynami, priorytetami i zaleceniami zamiast sztucznej punktacji,
+- dodano wykrywanie zmian między skanami: nowych urządzeń, usług oraz urządzeń niewidocznych,
+- odświeżono pulpit i karty w stylu Apple Pro + Cyber Layer,
+- zachowano osobny wariant developerski z UIREF, niewidoczny w aplikacji App Store,
 - dodano ekran szczegółów przebiegu skanowania,
 - dodano liczbę zaplanowanych i wykonanych prób TCP,
 - dodano podział odpowiedzi na otwarte, zamknięte, bez odpowiedzi i bez dostępu,
@@ -11,6 +16,10 @@
 - ograniczono generowane cele iSH do prywatnych adresów IPv4,
 - dodano samodzielny skrypt `NetScope-iSH-Toolkit.sh`,
 - rozszerzono testy telemetrii i generatora poleceń.
+
+## 1.3
+
+- poprzednia wersja produkcyjna przed przebudową nawigacji i Security.
 
 ## 1.2
 

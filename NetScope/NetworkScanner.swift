@@ -10,6 +10,8 @@ final class NetworkScanner: ObservableObject {
   @Published private(set) var history: [ScanSummary] = []
   @Published private(set) var sessionDetails: ScanSessionDetails?
   @Published private(set) var newDeviceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var newServiceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var disappearedDeviceKeys: Set<KnownDeviceKey> = []
   @Published private(set) var stage: ScanStage = .network
   let bonjourDiscovery = BonjourDiscovery()
   let knownDeviceStore: KnownDeviceStore
@@ -35,6 +37,8 @@ final class NetworkScanner: ObservableObject {
 
     cancellationRequested = false
     newDeviceKeys = []
+    newServiceKeys = []
+    disappearedDeviceKeys = []
     devices = []
     stage = .network
     phase = .preparing
@@ -136,6 +140,19 @@ final class NetworkScanner: ObservableObject {
     networkID: String,
     at date: Date
   ) {
+    let currentKeys = Set(devices.map { KnownDeviceKey(networkID: networkID, address: $0.address) })
+    newServiceKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return Set(previous.openPorts) == Set(device.openPorts) ? nil : key
+      }
+    )
+    disappearedDeviceKeys = Set(
+      knownDeviceStore.records
+        .filter { $0.key.networkID == networkID && !currentKeys.contains($0.key) }
+        .map(\.key)
+    )
     newDeviceKeys = knownDeviceStore.merge(
       devices: devices,
       networkID: networkID,

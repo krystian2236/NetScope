@@ -10,12 +10,57 @@ struct SessionRestorationTests {
     #expect(AppTab.restored(from: 999) == .dashboard)
   }
 
-  @Test("Primary navigation keeps Toolbox in the center")
-  func primaryNavigationKeepsToolboxInTheCenter() {
-    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .laboratory, .comingSoon])
-    #expect(AppTab.restored(from: 1) == .dashboard)
-    #expect(AppTab.restored(from: 2) == .dashboard)
+  @Test("Primary navigation keeps network and security separate")
+  func primaryNavigationKeepsNetworkAndSecuritySeparate() {
+    #expect(AppTab.navigationOrder == [.dashboard, .network, .security, .laboratory, .toolbox])
+    #expect(AppTab.restored(from: 1) == .network)
+    #expect(AppTab.restored(from: 2) == .security)
     #expect(AppTab.restored(from: 4) == .laboratory)
+  }
+
+  @Test("Security findings consume NET results without low-noise duplicates")
+  func securityFindingsConsumeNetworkResults() {
+    let device = NetworkDevice(
+      address: "192.168.1.20",
+      hostname: "demo",
+      openPorts: [23],
+      lastSeen: Date()
+    )
+
+    let findings = SecurityFinding.fromNetworkDevices([device])
+
+    #expect(findings.count == 1)
+    #expect(findings.first?.severity == .high)
+    #expect(findings.first?.evidence.contains("ostatni wynik NET") == true)
+  }
+
+  @Test("Hardening catalog stays local and actionable")
+  func hardeningCatalogHasAllCategories() {
+    #expect(Set(HardeningCheck.catalog.map(\.category)) == Set(HardeningCategory.allCases))
+    #expect(HardeningCheck.catalog.allSatisfy { !$0.guidance.isEmpty && !$0.rationale.isEmpty })
+  }
+
+  @Test("Secrets inspector reports line numbers and masks values")
+  func secretsInspectorMasksValues() {
+    let findings = SecretsInspector.scan("API_KEY=super-secret\nAuthorization: Bearer abc123")
+
+    #expect(findings.count == 2)
+    #expect(findings.map(\.lineNumber) == [1, 2])
+    #expect(findings.allSatisfy { $0.maskedValue == "••••••" })
+  }
+
+  @Test("Security playbooks use bounded six-step procedures")
+  func securityPlaybooksAreComplete() {
+    #expect(SecurityPlaybook.catalog.count == 5)
+    #expect(SecurityPlaybook.catalog.allSatisfy { $0.steps.count == 6 })
+    #expect(SecurityPlaybook.catalog.allSatisfy { $0.steps.map(\.id) == Array(1...6) })
+  }
+
+  @Test("Security labs use only local fictional scenarios")
+  func securityLabsAreBounded() {
+    #expect(SecurityLab.catalog.count == 3)
+    #expect(SecurityLab.catalog.allSatisfy { !$0.evidence.isEmpty && !$0.expectedOutcome.isEmpty })
+    #expect(SecurityLab.catalog.flatMap(\.evidence).allSatisfy { !$0.contains("nmap") && !$0.contains("dig") && !$0.contains("curl") })
   }
 
   @Test("Shortcut route restores the selected command")

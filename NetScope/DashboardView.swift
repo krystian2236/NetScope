@@ -22,6 +22,12 @@ struct DashboardView: View {
     return DeviceRegistryStatus.reviewCount(in: statuses)
   }
 
+  private var hasChanges: Bool {
+    !scanner.newDeviceKeys.isEmpty
+      || !scanner.newServiceKeys.isEmpty
+      || !scanner.disappearedDeviceKeys.isEmpty
+  }
+
   var body: some View {
     NavigationStack {
       ScrollView {
@@ -34,6 +40,7 @@ struct DashboardView: View {
           #endif
           networkHeader
           metrics
+          changes
           scanStatus
           history
           InfoBanner(
@@ -63,15 +70,15 @@ struct DashboardView: View {
     HStack(spacing: 11) {
       Image(systemName: "network")
         .font(.title3.weight(.semibold))
-        .foregroundStyle(.white)
+        .foregroundStyle(.cyan)
         .frame(width: 42, height: 42)
-        .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+        .background(.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
       VStack(alignment: .leading, spacing: 2) {
         Text("Monitor sieci lokalnej")
           .font(.subheadline.weight(.bold))
         Text(scanner.context?.address ?? "Połącz iPhone’a z Wi‑Fi")
           .font(.caption.monospaced())
-          .foregroundStyle(.white.opacity(0.8))
+          .foregroundStyle(.secondary)
       }
       Spacer()
       #if NETSCOPE_DEV
@@ -82,19 +89,20 @@ struct DashboardView: View {
           .font(.caption2.monospaced())
           .padding(.horizontal, 7)
           .padding(.vertical, 4)
-          .background(.white.opacity(0.14), in: Capsule())
+          .foregroundStyle(.cyan)
+          .background(.cyan.opacity(0.1), in: Capsule())
       }
     }
-    .foregroundStyle(.white)
+    .overlay(alignment: .topTrailing) {
+      StatusPill(title: scanner.context == nil ? "Offline" : "Local")
+        .padding(10)
+    }
     .padding(13)
-    .background(
-      LinearGradient(
-        colors: [.indigo, .cyan],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      ),
-      in: RoundedRectangle(cornerRadius: 15)
-    )
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    .overlay {
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+    }
   }
 
   private var metrics: some View {
@@ -133,6 +141,70 @@ struct DashboardView: View {
   }
 
   @ViewBuilder
+  private var changes: some View {
+    if hasChanges {
+      VStack(alignment: .leading, spacing: 9) {
+        HStack {
+          Label("Od ostatniego skanu", systemImage: "arrow.triangle.2.circlepath")
+            .font(.caption.weight(.semibold))
+          Spacer()
+          #if NETSCOPE_DEV
+          UIRefCopyButton(ref: .dashboardChanges)
+          #endif
+        }
+
+        if !scanner.newDeviceKeys.isEmpty {
+          ChangeRow(
+            icon: "plus.circle.fill",
+            tint: .green,
+            title: "Nowe urządzenia",
+            detail: names(for: scanner.newDeviceKeys)
+          )
+        }
+        if !scanner.newServiceKeys.isEmpty {
+          ChangeRow(
+            icon: "sparkles",
+            tint: .cyan,
+            title: "Nowe lub zmienione usługi",
+            detail: names(for: scanner.newServiceKeys)
+          )
+        }
+        if !scanner.disappearedDeviceKeys.isEmpty {
+          ChangeRow(
+            icon: "minus.circle.fill",
+            tint: .orange,
+            title: "Niewidoczne urządzenia",
+            detail: names(for: scanner.disappearedDeviceKeys)
+          )
+        }
+      }
+      .padding(12)
+      .background(.background, in: RoundedRectangle(cornerRadius: 14))
+      .overlay {
+        RoundedRectangle(cornerRadius: 14)
+          .stroke(Color.cyan.opacity(0.12), lineWidth: 1)
+      }
+    }
+  }
+
+  private func names(for keys: Set<KnownDeviceKey>) -> String {
+    keys
+      .sorted { $0.address.localizedStandardCompare($1.address) == .orderedAscending }
+      .prefix(2)
+      .map { key in
+        if let device = scanner.devices.first(where: { $0.address == key.address }) {
+          return device.primaryName
+        }
+        if let record = knownDeviceStore.record(for: key) {
+          return record.normalizedCustomName ?? record.hostname ?? record.kind.title
+        }
+        return key.address
+      }
+      .joined(separator: " • ")
+      + (keys.count > 2 ? " • +\(keys.count - 2)" : "")
+  }
+
+  @ViewBuilder
   private var scanStatus: some View {
     switch scanner.phase {
     case .scanning(let completed, let total):
@@ -152,6 +224,10 @@ struct DashboardView: View {
       }
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 13))
+      .overlay {
+        RoundedRectangle(cornerRadius: 13)
+          .stroke(Color.cyan.opacity(0.12), lineWidth: 1)
+      }
     default:
       EmptyView()
     }
@@ -193,6 +269,34 @@ struct DashboardView: View {
       }
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 14))
+      .overlay {
+        RoundedRectangle(cornerRadius: 14)
+          .stroke(Color.cyan.opacity(0.12), lineWidth: 1)
+      }
+    }
+  }
+}
+
+private struct ChangeRow: View {
+  let icon: String
+  let tint: Color
+  let title: String
+  let detail: String
+
+  var body: some View {
+    HStack(spacing: 9) {
+      Image(systemName: icon)
+        .foregroundStyle(tint)
+        .frame(width: 24)
+      VStack(alignment: .leading, spacing: 1) {
+        Text(title)
+          .font(.caption.weight(.semibold))
+        Text(detail)
+          .font(.caption2.monospaced())
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      Spacer(minLength: 0)
     }
   }
 }

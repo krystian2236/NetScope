@@ -75,7 +75,7 @@ assert_plist_value() {
 }
 
 assert_plist_value CFBundleIdentifier pl.krystian.NetScope
-assert_plist_value CFBundleShortVersionString 1.3
+assert_plist_value CFBundleShortVersionString 1.4
 assert_plist_value ITSAppUsesNonExemptEncryption false
 
 local_network_description="$(
