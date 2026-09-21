@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-checks:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repository integrity
+        run: |
+          git diff --check
+          test -f AGENTS.md
+          test -f SPEC.md
+          test -f ROADMAP.md
+          test -f TASKS.md
+      - name: Detect Xcode project
+        run: |
+          find . -maxdepth 2 \( -name '*.xcodeproj' -o -name '*.xcworkspace' \) -print
