@@ -24,6 +24,8 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 
 ## Weryfikacja
 
+Każdy nowy użytkowy ekran, zakładka, navigation destination, sheet, fullScreenCover, ekran szczegółów lub osobne narzędzie musi otrzymać stabilny UIREF przed uznaniem zadania za zakończone. Przy dodawaniu ekranu należy dodać case i metadane do pliku UIRef.swift, umieścić UIRefCopyButton bezpośrednio na właściwym ekranie, użyć prefiksu NETSCOPE, nie duplikować identyfikatorów, ograniczyć UIREF do NETSCOPE_DEV i uwzględnić go w raporcie końcowym. Jeśli funkcja dodaje kilka oddzielnych ekranów, każdy otrzymuje własny UIREF.
+
 - Dobierz najwęższe testy obejmujące zmianę, następnie wykonaj `git diff --check`.
 - Nie twierdź, że testy przeszły, jeśli zostały tylko skompilowane albo ich uruchomienie zablokował symulator.
 - Po zakończeniu podaj: wynik, zmienione pliki, wykonaną weryfikację i jedno krótkie zalecenie lub wniosek.
@@ -36,6 +38,8 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 
 ## TARGET / REFERENCE
 
+- Jeśli polecenie użytkownika zawiera `UIREF:`, traktuj wskazany identyfikator jako główny zakres zadania. Najpierw odnajdź powiązany View/symbol i jego bezpośrednie zależności. Nie rozszerzaj zmian poza ten obszar bez uzasadnienia lub zgody użytkownika.
+
 - Gdy Codex ma dostęp do kilku repozytoriów, jawnie ustal przed zmianami:
   - TARGET — repozytorium, które wolno modyfikować,
   - REFERENCE — repozytorium wyłącznie do odczytu i porównań.
@@ -46,7 +50,13 @@ Te instrukcje obowiązują Codex, ChatGPT oraz GitHub Copilot podczas pracy w ty
 
 ## Simulator iOS
 
-- Domyślnym symulatorem projektu NetScope jest `NET` o UDID `F2410F8B-1636-4ECB-88F0-CEF922887673` z iOS 27.0.
-- Przy poleceniach `xcodebuild` i `simctl` używaj tego urządzenia, jeśli zadanie dotyczy iPhone'a.
-- Jeśli zadanie wymaga innego typu urządzenia, najpierw sprawdź dostępne `xcodebuild -showdestinations` i zaproponuj właściwe.
-- Nie twórz, nie usuwaj ani nie resetuj Simulatora bez osobnego polecenia użytkownika.
+### NetScope / NetScope Dev
+
+- Przypisany Simulator: `NET`
+- UDID: `F2410F8B-1636-4ECB-88F0-CEF922887673`
+- Dotyczy zarówno `NetScope`, jak i `NetScope Dev`.
+- Wszystkie polecenia `xcodebuild`, `simctl`, install, launch oraz screenshoty dla NetScope wykonuj na tym UDID.
+- Nie wybieraj automatycznie innego Simulatora.
+- Jeśli ten UDID nie jest dostępny, zatrzymaj się i pokaż dostępne urządzenia zamiast wybierać inne.
+- Dev i Production mogą być zainstalowane jednocześnie na `NET`, ponieważ używają różnych bundle ID.
+- Nie resetuj ani nie wymazuj całego Simulatora bez osobnego polecenia użytkownika.
