@@ -32,7 +32,7 @@ grep -q 'tool: NucleiCatalog.definition' "$repo_root/NetScope/ToolboxView.swift"
 build_bundle() {
   xcodebuild \
     -project "$repo_root/NetScope.xcodeproj" \
-    -scheme NetScope \
+    -scheme "NetScope App Store" \
     -configuration Release \
     -sdk iphoneos \
     -destination 'generic/platform=iOS' \

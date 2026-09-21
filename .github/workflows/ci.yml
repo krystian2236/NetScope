@@ -1,0 +1,73 @@
+name: iOS CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'task/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: xcode-27
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show environment
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Check diff
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git diff --check origin/main...HEAD
+
+      - name: Select iPhone Simulator
+        id: simulator
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          simulator_id="$(xcrun simctl list devices available | sed -nE 's/.*iPhone[^\(]*\(([0-9A-Fa-f-]{36})\).*/\1/p' | head -n 1)"
+          if [[ -z "$simulator_id" ]]; then
+            print -u2 "Brak dostępnego iPhone Simulatora"
+            exit 1
+          fi
+          print "id=$simulator_id" >> "$GITHUB_OUTPUT"
+          print "Wybrany Simulator: $simulator_id"
+
+      - name: Run unit tests
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project NetScope.xcodeproj \
+            -scheme 'NetScope Developer' \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
+            -derivedDataPath "$RUNNER_TEMP/NetScopeTests" \
+            test
+
+      - name: Build Release and verify privacy
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          zsh ./scripts/test-project-integrity.sh

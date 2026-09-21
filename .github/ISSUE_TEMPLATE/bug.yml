@@ -1,0 +1,43 @@
+name: Bug
+description: Zgłoś błąd w VectorNet
+body:
+  - type: markdown
+    attributes:
+      value: "## VectorNet — zgłoszenie błędu"
+  - type: input
+    id: uiref
+    attributes:
+      label: UIREF
+      description: Wklej identyfikator skopiowany z etykiety DEV, jeśli dotyczy UI.
+      placeholder: "UIREF app=VectorNet screen=toolbox component=nmap view=ToolLearningView"
+  - type: textarea
+    id: current
+    attributes:
+      label: Aktualny stan
+      description: Co dzieje się teraz?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Oczekiwany stan
+      description: Co powinno się dziać?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Kroki odtworzenia
+      description: Podaj najkrótszą sekwencję prowadzącą do błędu.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Weryfikacja
+      description: Jak sprawdzimy, że błąd został naprawiony?

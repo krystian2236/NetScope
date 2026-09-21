@@ -1,0 +1,43 @@
+name: Improvement
+description: Ulepsz istniejącą część VectorNet
+body:
+  - type: markdown
+    attributes:
+      value: "## VectorNet — ulepszenie"
+  - type: input
+    id: uiref
+    attributes:
+      label: UIREF
+      description: Wklej identyfikator DEV, jeśli zmiana dotyczy UI.
+  - type: textarea
+    id: current
+    attributes:
+      label: Aktualny stan
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Docelowy stan
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort
+      options: [XS, S, M, L]
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Kryteria zakończenia
+    validations:
+      required: true

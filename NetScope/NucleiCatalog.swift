@@ -9,11 +9,22 @@ enum NucleiCatalog {
     reviewedAt: "2026-09-12",
     usageParts: [
       .literal("nuclei"),
-      .category(label: "[Options]", categoryID: "common"),
-      .category(label: "{target}", categoryID: "target"),
+      .section(
+        .init(
+          id: "flags",
+          label: "[flags]",
+          categoryIDs: [
+            "common", "target", "target-format", "templates", "filtering", "output",
+            "configurations", "interactsh", "fuzzing", "uncover", "rate-limit",
+            "optimizations", "headless", "debug", "update", "honeypot", "statistics",
+            "cloud", "authentication",
+          ],
+          tone: .options
+        )
+      ),
     ],
     categories: categories,
-    options: options
+    options: featuredOptions
   )
 
   private static let categories: [ToolCategoryDefinition] = [
@@ -53,6 +64,20 @@ enum NucleiCatalog {
   private static let fileRisk: ToolRiskLevel = .caution(
     reason: "Ta opcja czyta lub zapisuje plik na urządzeniu wykonującym polecenie."
   )
+
+  private static let featuredOptionIDs: Set<String> = [
+    "max-time", "target", "list", "templates", "tags", "severity", "jsonl", "rate-limit",
+    "timeout", "retries", "verbose", "version", "new-templates", "update-templates",
+    "disable-update-check",
+  ]
+
+  private static var featuredOptions: [ToolOptionDefinition] {
+    options.map { option in
+      var option = option
+      option.isFeatured = featuredOptionIDs.contains(option.id)
+      return option
+    }
+  }
   private static let updateRisk: ToolRiskLevel = .caution(
     reason: "Ta opcja modyfikuje lokalne dane lub konfigurację Nuclei."
   )
@@ -263,6 +288,7 @@ enum NucleiCatalog {
     f("health-check", "debug", ["-hc", "-health-check"], "Kontrola stanu", "Uruchamia diagnostykę instalacji.", 2360),
 
     // UPDATE
+    f("update-engine", "update", ["-up", "-update"], "Aktualizuj silnik", "Aktualizuje lokalny silnik Nuclei do najnowszej wersji.", 2390, updateRisk),
     f("update-templates", "update", ["-ut", "-update-templates"], "Aktualizuj szablony", "Pobiera najnowsze szablony.", 2400, updateRisk),
     v("update-template-dir", "update", ["-ud", "-update-template-dir"], "Katalog aktualizacji", "Wybiera katalog instalacji szablonów.", .path(example: "nuclei-templates"), 2410, updateRisk),
     f("disable-update-check", "update", ["-duc", "-disable-update-check"], "Bez sprawdzania aktualizacji", "Wyłącza automatyczne sprawdzanie wersji.", 2420),

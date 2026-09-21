@@ -134,7 +134,7 @@ struct DashboardView: View {
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
           .accessibilityLabel("Postęp skanowania sieci")
-          .accessibilityValue("(completed) z (total) adresów")
+          .accessibilityValue("\(completed) z \(total) adresów")
       }
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 13))

@@ -5,7 +5,15 @@ enum ToolCommandBuilder {
     let selectedOptions = tool.options
       .filter { selection.selectedOptionIDs.contains($0.id) }
       .sorted { lhs, rhs in
-        lhs.order == rhs.order ? lhs.id < rhs.id : lhs.order < rhs.order
+        if tool.id == "curl" {
+          let lhsDisable = lhs.id == "disable"
+          let rhsDisable = rhs.id == "disable"
+          if lhsDisable != rhsDisable { return lhsDisable }
+        }
+        if lhs.argumentPhase != rhs.argumentPhase {
+          return lhs.argumentPhase.rawValue < rhs.argumentPhase.rawValue
+        }
+        return lhs.order == rhs.order ? lhs.id < rhs.id : lhs.order < rhs.order
       }
 
     var fragments = [
@@ -22,12 +30,13 @@ enum ToolCommandBuilder {
 
     for option in selectedOptions {
       let rawValue = selection.values[option.id]
-      let error = selectionError(
+      let issue = ToolCompatibilityEvaluator.issue(
         for: option,
-        rawValue: rawValue,
-        selectedOptionIDs: selection.selectedOptionIDs,
-        tool: tool
+        in: tool,
+        selection: selection,
+        validateValue: true
       )
+      let error = issue?.message
       let fragmentValue = renderedFragment(for: option, rawValue: rawValue)
 
       if let error { errors.append(error) }
@@ -57,93 +66,12 @@ enum ToolCommandBuilder {
 
     let validFragments = fragments.filter { $0.role != .invalid }
     return ToolCommandDraft(
-      command: validFragments.map(\.value).joined(separator: " "),
+      command: fragments.map(\.value).joined(separator: " "),
       fragments: fragments,
       explanation: validFragments.map(\.explanation).joined(separator: " "),
       warnings: unique(warnings),
       errors: unique(errors)
     )
-  }
-
-  private static func selectionError(
-    for option: ToolOptionDefinition,
-    rawValue: String?,
-    selectedOptionIDs: Set<String>,
-    tool: ToolDefinition
-  ) -> String? {
-    let conflicts = option.conflictsWithOptionIDs.intersection(selectedOptionIDs)
-    if !conflicts.isEmpty {
-      let names = tool.options
-        .filter { conflicts.contains($0.id) }
-        .map(\.canonicalFlag)
-        .filter { !$0.isEmpty }
-        .joined(separator: ", ")
-      return "Opcja \(option.canonicalFlag) jest sprzeczna z: \(names)."
-    }
-
-    let missing = option.requiresOptionIDs.subtracting(selectedOptionIDs)
-    if !missing.isEmpty {
-      let names = tool.options
-        .filter { missing.contains($0.id) }
-        .map(\.canonicalFlag)
-        .filter { !$0.isEmpty }
-        .joined(separator: ", ")
-      return "Opcja \(option.canonicalFlag) wymaga: \(names)."
-    }
-    if tool.id == "nmap", option.id == "ports",
-       let value = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-       !value.isEmpty, !validNmapPorts(value) {
-      return "Nieprawidłowy zakres portów. Użyj np. 22, 22,80,443 albo 1-1024."
-    }
-    return validationError(for: option, rawValue: rawValue)
-  }
-
-  private static func validNmapPorts(_ value: String) -> Bool {
-    value.split(separator: ",", omittingEmptySubsequences: false).allSatisfy { item in
-      let cleanItem = item.trimmingCharacters(in: .whitespaces)
-      let protocolPrefix = cleanItem.range(of: #"^[TUSP]:"#, options: .regularExpression)
-      let ports = protocolPrefix.map { String(cleanItem[$0.upperBound...]) } ?? cleanItem
-      let bounds = ports.split(separator: "-", omittingEmptySubsequences: false)
-      guard (1...2).contains(bounds.count) else { return false }
-      return bounds.allSatisfy { part in
-        guard let port = Int(part), (1...65_535).contains(port) else { return false }
-        return String(port) == part
-      }
-    }
-  }
-
-  private static func validationError(
-    for option: ToolOptionDefinition,
-    rawValue: String?
-  ) -> String? {
-    guard !option.canonicalFlag.isEmpty || option.id == "target" else {
-      return "Opcja \(option.title) nie ma zdefiniowanej flagi."
-    }
-    guard option.valueKind.requiresValue else { return nil }
-
-    let value = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !value.isEmpty else {
-      return "Uzupełnij wartość dla \(option.canonicalFlag)."
-    }
-
-    switch option.valueKind {
-    case .none, .text, .path, .list, .secret:
-      return nil
-    case .integer(let range, _):
-      guard let number = Int(value), range.contains(number) else {
-        return "Wartość dla \(option.canonicalFlag) musi być liczbą od \(range.lowerBound) do \(range.upperBound)."
-      }
-    case .duration:
-      let pattern = #"^[1-9][0-9]*(ms|s|m|h)$"#
-      guard value.range(of: pattern, options: .regularExpression) != nil else {
-        return "Wartość dla \(option.canonicalFlag) podaj jako czas, np. 30s lub 2m."
-      }
-    case .choice(let values, _):
-      guard values.contains(value) else {
-        return "Wybierz dla \(option.canonicalFlag): \(values.joined(separator: ", "))."
-      }
-    }
-    return nil
   }
 
   private static func renderedFragment(
@@ -152,14 +80,17 @@ enum ToolCommandBuilder {
   ) -> String {
     guard option.valueKind.requiresValue else { return option.canonicalFlag }
     let value = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if option.id == "target", option.canonicalFlag.isEmpty { return quoted(value) }
+    if option.id == "target", option.canonicalFlag.isEmpty,
+       option.valuePlacement != .positional { return quoted(value) }
     switch option.valuePlacement {
     case .separated:
       return "\(option.canonicalFlag) \(quoted(value))"
     case .attached:
-      return "\(option.canonicalFlag)\(value)"
+      return shellWord("\(option.canonicalFlag)\(value)")
     case .equals:
       return "\(option.canonicalFlag)=\(quoted(value))"
+    case .positional:
+      return shellWord(value)
     }
   }
 
@@ -186,6 +117,11 @@ enum ToolCommandBuilder {
 
   private static func quoted(_ value: String) -> String {
     "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
+  }
+
+  private static func shellWord(_ value: String) -> String {
+    let safe = value.range(of: #"^[A-Za-z0-9._:/+@-]+$"#, options: .regularExpression) != nil
+    return safe ? value : quoted(value)
   }
 
   private static func unique(_ values: [String]) -> [String] {

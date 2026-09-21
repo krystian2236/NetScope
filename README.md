@@ -1,47 +1,69 @@
 # NetScope
 
-NetScope to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
-i popularne usługi w prywatnej sieci lokalnej.
+NetScope to natywna aplikacja SwiftUI na iOS 17+ do bezpiecznego rozpoznawania własnej sieci lokalnej i nauki defensywnych narzędzi sieciowych.
 
-## Funkcje w wersji 1.3
+Aplikacja nie służy do atakowania publicznych celów. Skaner sieci lokalnej działa w obrębie prywatnej lub link-localnej sieci użytkownika, a dodatkowe narzędzia należy uruchamiać wyłącznie wobec własnych systemów albo za zgodą właściciela.
 
-- pięć czytelnych zakładek: **Start**, **Sieć**, **Porty**, **Ping** i **Bonjour**,
-- kompaktowy pulpit z liczbą urządzeń, usług i wyników wymagających uwagi,
-- trzy profile skanu prywatnej podsieci IPv4 `/24`: szybki, standardowy
-  i rozszerzony,
-- wykrywanie typowych usług TCP bez logowania i wysyłania poleceń,
-- odwrotne DNS oraz szacowanie rodzaju urządzenia na podstawie usług,
-- szczegóły portów: kategoria, opis i informacja o typowym szyfrowaniu,
-- lokalna historia ośmiu ostatnich skanów,
-- szczegółowe statystyki przebiegu: liczba prób, hostów, odpowiedzi,
-  przekroczeń czasu i odmów dostępu,
-- telemetria każdego urządzenia: liczba sprawdzonych portów, czas wykrywania
-  i opóźnienie otwartych usług,
-- odkrywanie usług Bonjour, między innymi AirPlay, drukarek, SSH, HTTP,
-  Google Cast, HomeKit, Matter i MQTT,
-- filtrowanie urządzeń, rozszerzony widok szczegółów i bogatszy eksport CSV,
-- **My IP** z lokalnym IPv4 i opcjonalnym publicznym IPv4/IPv6,
-- diagnostyka domen: DNS, TCP ping i test wskazanego portu,
-- skaner portów w stylu Nmap z profilami WWW, IoT, zdalnego dostępu,
-  serwerów i baz danych oraz zakresem własnym do 512 portów,
-- wyniki skanowania pozostają na urządzeniu.
+## Aktualny interfejs
 
-## Integracja z iSH
+W bieżącym buildzie Release/App Store dolny pasek zawiera dwie główne sekcje:
 
-Ekran **Start → Narzędzia dla iSH** przygotowuje:
+- **Start** — skan prywatnej sieci, stan przebiegu, wykryte urządzenia i wejście do usług sieciowych,
+- **Toolbox** — edukacyjne generatory poleceń Nmap i Nuclei z opisem składni i bezpiecznego użycia.
 
-- polecenie instalacji Nmap w Alpine,
-- polecenie jednorazowego skanu dla podsieci albo wybranego urządzenia,
-- skrypt `netscope-ish.sh`, który można zapisać w aplikacji Pliki,
-  przenieść do lokalizacji iSH i uruchomić,
-- trzy tryby: inwentaryzacja, rozszerzony TCP i lekka identyfikacja usług.
+W buildzie developerskim może dodatkowo pojawiać się zakładka **Wkrótce** z podglądem planowanych funkcji. Nie jest ona częścią powierzchni Release.
 
-NetScope używa w poleceniach iSH trybu `--unprivileged -sT`, czyli zwykłych
-połączeń TCP zamiast surowych pakietów. Cel jest ograniczony do prywatnego IPv4.
-Samodzielny skrypt `NetScope-iSH-Toolkit.sh` jest również dołączony obok paczki
-projektu.
+## Start i skan sieci
 
-Przykładowe uruchomienie w iSH:
+NetScope oferuje:
+
+- trzy profile skanu prywatnej podsieci IPv4 `/24`: szybki, standardowy i rozszerzony,
+- wykrywanie typowych usług TCP bez logowania i wykonywania poleceń na urządzeniach,
+- bieżący postęp skanu i statystyki przebiegu,
+- wykrywanie nazw DNS i podstawową klasyfikację rodzaju urządzenia,
+- ocenę ekspozycji opartą na widocznych usługach,
+- lokalną historię ostatnich skanów,
+- zapamiętywanie znanych urządzeń lokalnie na urządzeniu,
+- wykrywanie usług Bonjour,
+- widoki urządzeń i usług dostępne bezpośrednio ze Startu.
+
+Skanowanie sieci lokalnej należy ostatecznie sprawdzić na prawdziwym iPhonie. Simulator nie odwzorowuje w pełni uprawnienia Local Network i może widzieć inną sieć niż telefon.
+
+## Usługi i diagnostyka
+
+Ze Startu dostępne są m.in.:
+
+- skaner portów TCP,
+- DNS oraz lokalny i opcjonalny publiczny adres IP,
+- TCP Ping,
+- wykrywanie usług Bonjour,
+- szczegóły wykrytych urządzeń i ich usług.
+
+Publiczny adres IP jest pobierany z `api64.ipify.org` dopiero po wybraniu odpowiedniej akcji przez użytkownika.
+
+## Toolbox
+
+Zakładka **Toolbox** jest częścią edukacyjną aplikacji.
+
+Aktualnie zawiera:
+
+- **Nmap** — budowanie poleceń krok po kroku według kategorii i opcji,
+- **Nuclei** — budowanie kontroli opartych na szablonach,
+- **Dig** — ćwiczenia i polecenia do diagnostyki DNS,
+- **Curl** — budowanie kontrolowanych żądań HTTP i nauka opcji klienta,
+- objaśnienia elementów polecenia i bezpiecznego zakresu użycia.
+
+Toolbox przygotowuje polecenia do świadomego wykonania przez użytkownika. NetScope nie udostępnia modułów eksploatacji ani łamania haseł.
+
+## iSH i SSH
+
+Repozytorium nadal zawiera narzędzia i modele wspierające iSH oraz bibliotekę bezpiecznych skrótów SSH. Polecenia są przeznaczone do ręcznego skopiowania i wykonania przez użytkownika.
+
+NetScope nie przechowuje haseł ani kluczy prywatnych.
+
+Dołączony `NetScope-iSH-Toolkit.sh` ogranicza cele do prywatnego IPv4 i używa połączeń TCP bez surowych pakietów.
+
+Przykład ręcznego użycia w iSH:
 
 ```sh
 apk update && apk add nmap
@@ -49,31 +71,32 @@ chmod +x NetScope-iSH-Toolkit.sh
 ./NetScope-iSH-Toolkit.sh 192.168.1.0/24
 ```
 
-## Uruchomienie
+## Prywatność
 
-1. Otwórz `NetScope.xcodeproj` w Xcode.
-2. W ustawieniach targetu `NetScope` wybierz swój Apple Development Team.
-3. Podłącz iPhone’a, wybierz go jako urządzenie docelowe i uruchom aplikację.
-4. Naciśnij **Skanuj moją sieć** i zaakceptuj dostęp do sieci lokalnej.
-
-Publiczny adres IP jest odczytywany z `api64.ipify.org` dopiero po wybraniu
-przycisku **Pobierz publiczny IP**.
-
-Skanowanie sieci lokalnej należy testować na prawdziwym iPhonie. Symulator nie
-odwzorowuje uprawnienia Local Network i może widzieć inną sieć niż telefon.
+- brak konta wymaganego do używania bieżących funkcji,
+- wyniki skanowania i rejestr urządzeń pozostają lokalnie,
+- brak ukrytego śledzenia,
+- dostęp do sieci lokalnej jest używany do funkcji sieciowych uruchamianych przez użytkownika,
+- deklaracje aplikacji znajdują się w `NetScope/Info.plist` i `NetScope/PrivacyInfo.xcprivacy`.
 
 ## Zakres bezpieczeństwa
 
-Aplikacja skanuje wyłącznie prywatny lub link-localny adres IPv4 urządzenia
-i ogranicza zakres do lokalnego `/24`. Nie obsługuje publicznych celów,
-uwierzytelniania, exploitów ani wykonywania poleceń na wykrytych urządzeniach.
+Skaner lokalny ogranicza się do prywatnego lub link-localnego IPv4 urządzenia i lokalnego `/24`.
 
-Narzędzie Port Scan pozwala sprawdzić domenę lub adres wskazany przez
-użytkownika, ale ogranicza pojedynczy własny zakres do 512 portów. Należy go
-używać wyłącznie wobec własnych systemów lub po uzyskaniu zgody właściciela.
-„TCP Ping” mierzy czas zestawienia połączenia TCP, ponieważ iOS nie udostępnia
-zwykłym aplikacjom surowego ICMP w taki sposób jak narzędzia desktopowe.
+Narzędzia diagnostyczne i polecenia Toolbox należy stosować wyłącznie wobec własnych systemów albo systemów objętych zgodą właściciela. Ocena rodzaju urządzenia i poziomu ekspozycji jest wskazówką opartą na widocznych portach; nie potwierdza podatności i nie zastępuje audytu bezpieczeństwa.
 
-Ocena rodzaju urządzenia i poziomu ekspozycji jest wskazówką opartą na
-widocznych portach. Nie zastępuje audytu bezpieczeństwa ani nie potwierdza
-podatności.
+## Uruchomienie lokalne
+
+Na Macu z Xcode:
+
+1. Otwórz `NetScope.xcodeproj`.
+2. Wybierz własny Apple Development Team dla targetu `NetScope`.
+3. Wybierz Simulator albo podłączony iPhone.
+4. Uruchom aplikację.
+5. Na prawdziwym iPhonie zaakceptuj dostęp do sieci lokalnej przed skanem.
+
+Przed proponowanym push uruchom:
+
+```sh
+./scripts/pre-push-check.sh
+```
