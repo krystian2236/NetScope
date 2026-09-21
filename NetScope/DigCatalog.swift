@@ -88,6 +88,8 @@ enum DigCatalog {
   }
 
   private static func v(_ id: String, _ category: String, _ flags: [String], _ title: String, _ summary: String, _ kind: ToolValueKind, _ order: Int, _ risk: ToolRiskLevel = .standard, _ placement: ToolValuePlacement = .separated, _ phase: ToolArgumentPhase = .afterTarget) -> ToolOptionDefinition {
-    .init(id: id, categoryID: category, flags: flags, title: title, summary: summary, valueKind: kind, valuePlacement: placement, risk: risk, order: order, argumentPhase: phase)
+    var option = ToolOptionDefinition(id: id, categoryID: category, flags: flags, title: title, summary: summary, valueKind: kind, valuePlacement: placement, risk: risk, order: order, argumentPhase: phase)
+    if id == "record-type" { option.requiresOptionIDs = ["target"] }
+    return option
   }
 }

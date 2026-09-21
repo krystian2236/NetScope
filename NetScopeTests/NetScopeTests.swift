@@ -8,6 +8,9 @@ struct SessionRestorationTests {
   @Test("Unknown tab falls back to dashboard")
   func unknownTabFallsBackToDashboard() {
     #expect(AppTab.restored(from: 999) == .dashboard)
+    #expect(AppTab.restored(from: AppTab.comingSoon.rawValue, variant: .appStore) == .dashboard)
+    #expect(AppTab.restored(from: AppTab.cipherPath.rawValue, variant: .appStore) == .dashboard)
+    #expect(AppTab.restored(from: AppTab.scanner.rawValue, variant: .appStore) == .dashboard)
   }
 
   @Test("Primary navigation keeps Toolbox in the center")
@@ -478,6 +481,18 @@ struct ToolCommandCatalogTests {
     )
 
     #expect(ToolCommandBuilder.build(tool: tool, selection: selection).command == "tool -T4 --script='default'")
+  }
+
+  @Test("Attached values are shell quoted as one argument")
+  func attachedValuesAreShellQuoted() {
+    let option = ToolOptionDefinition(
+      id: "server", categoryID: "options", flags: ["@"], title: "Serwer", summary: "Serwer.",
+      valueKind: .text(example: "8.8.8.8; echo TEST"), valuePlacement: .attached,
+      risk: .standard, order: 10
+    )
+    let tool = ToolDefinition(id: "dig", executable: "dig", title: "Dig", helpVersion: "1", reviewedAt: "2026-09-13", categories: [], options: [option])
+    let selection = ToolSelection(selectedOptionIDs: ["server"], values: ["server": "8.8.8.8; echo TEST"])
+    #expect(ToolCommandBuilder.build(tool: tool, selection: selection).command == "dig '@8.8.8.8; echo TEST'")
   }
 
   @Test("Builder supports positional values without a flag")

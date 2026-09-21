@@ -122,7 +122,6 @@ enum CurlCatalog {
 
     v("key", "ssh", ["--key"], "Klucz prywatny", "Wczytuje klucz klienta TLS lub SSH.", .secret(example: "id_ed25519"), 1300, secretRisk),
     v("pubkey", "ssh", ["--pubkey"], "Klucz publiczny", "Wczytuje klucz publiczny SSH.", .path(example: "id_ed25519.pub"), 1310, fileRisk),
-    v("known-hosts", "ssh", ["--knownhosts"], "Known hosts", "Wybiera plik z zaufanymi kluczami hostów SSH.", .path(example: "known_hosts"), 1320, fileRisk),
 
     v("telnet-option", "telnet", ["-t", "--telnet-option"], "Opcja Telnet", "Ustawia parametr protokołu Telnet.", .text(example: "TTYPE=xterm"), 1400),
     f("tftp-no-options", "tftp", ["--tftp-no-options"], "Bez opcji TFTP", "Nie wysyła rozszerzeń opcji TFTP.", 1500),
@@ -144,7 +143,6 @@ enum CurlCatalog {
     v("mail-from", "smtp", ["--mail-from"], "Nadawca", "Ustawia adres nadawcy SMTP.", .text(example: "sender@example.com"), 1920, networkRisk),
     v("mail-rcpt", "smtp", ["--mail-rcpt"], "Odbiorca", "Dodaje odbiorcę SMTP.", .text(example: "recipient@example.com"), 1930, networkRisk),
     f("scp-path-as-is", "scp", ["--path-as-is"], "Ścieżka bez zmian", "Nie normalizuje sekwencji /../ w ścieżce URL.", 1940),
-    v("sftp-create-dirs", "sftp", ["--ftp-create-dirs"], "Twórz katalogi", "Tworzy brakujące katalogi zdalne.", .text(example: "true"), 1950, networkRisk),
   ]
 
   private static let featuredIDs: Set<String> = [

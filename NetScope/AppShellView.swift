@@ -11,8 +11,10 @@ enum AppTab: Int, Hashable {
     .dashboard, .toolbox, .comingSoon, .cipherPath, .scanner
   ]
 
-  static func restored(from rawValue: Int) -> AppTab {
-    AppTab(rawValue: rawValue) ?? .dashboard
+  static func restored(from rawValue: Int, variant: BuildVariant = .current) -> AppTab {
+    let restored = AppTab(rawValue: rawValue) ?? .dashboard
+    guard !variant.includesDeveloperTools else { return restored }
+    return [.comingSoon, .cipherPath, .scanner].contains(restored) ? .dashboard : restored
   }
 
   var developerAreaID: DeveloperAreaID {

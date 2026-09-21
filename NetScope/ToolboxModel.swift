@@ -158,10 +158,19 @@ enum ToolTerminalGuidance {
       argument = example
     } else if option.valuePlacement == .attached || option.valuePlacement == .equals {
       let separator = option.valuePlacement == .equals ? "=" : ""
-      argument = "\(option.canonicalFlag)\(separator)\(example)"
+      argument = shellWord("\(option.canonicalFlag)\(separator)\(example)")
     } else {
-      argument = "\(option.canonicalFlag) \(example)"
+      argument = "\(option.canonicalFlag) \(shellWord(example))"
     }
     return "\(executable) \(argument)"
+  }
+
+  private static func shellQuote(_ value: String) -> String {
+    "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
+  }
+
+  private static func shellWord(_ value: String) -> String {
+    let safe = value.range(of: #"^[A-Za-z0-9._:/+@%-]+$"#, options: .regularExpression) != nil
+    return safe ? value : shellQuote(value)
   }
 }

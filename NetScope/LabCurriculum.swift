@@ -70,7 +70,7 @@ enum LabCommandSanitizer {
     tool.options.filter(\.isSecret).reduce(command) { current, option in
       option.flags.reduce(current) { value, flag in
         let escaped = NSRegularExpression.escapedPattern(for: flag)
-        let pattern = "(?<!\\S)\(escaped)(?:=|\\s+)(?:'[^']*'|\"[^\"]*\"|\\S+)"
+        let pattern = "(?<!\\S)\(escaped)(?:=|\\s+|(?=[^\\s-]))(?:'[^']*'|\"[^\"]*\"|\\S+)"
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return value }
         let range = NSRange(value.startIndex..., in: value)
         return expression.stringByReplacingMatches(

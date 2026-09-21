@@ -5,6 +5,11 @@ enum ToolCommandBuilder {
     let selectedOptions = tool.options
       .filter { selection.selectedOptionIDs.contains($0.id) }
       .sorted { lhs, rhs in
+        if tool.id == "curl" {
+          let lhsDisable = lhs.id == "disable"
+          let rhsDisable = rhs.id == "disable"
+          if lhsDisable != rhsDisable { return lhsDisable }
+        }
         if lhs.argumentPhase != rhs.argumentPhase {
           return lhs.argumentPhase.rawValue < rhs.argumentPhase.rawValue
         }
@@ -81,7 +86,7 @@ enum ToolCommandBuilder {
     case .separated:
       return "\(option.canonicalFlag) \(quoted(value))"
     case .attached:
-      return "\(option.canonicalFlag)\(value)"
+      return shellWord("\(option.canonicalFlag)\(value)")
     case .equals:
       return "\(option.canonicalFlag)=\(quoted(value))"
     case .positional:
