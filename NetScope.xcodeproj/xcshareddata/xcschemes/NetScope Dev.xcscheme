@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A0000000000000000000000B"
-               BuildableName = "NetScope Dev.app"
-               BlueprintName = "NetScope Dev"
+               BlueprintIdentifier = "A00000000000000000000002"
+               BuildableName = "NetScope.app"
+               BlueprintName = "NetScope"
                ReferencedContainer = "container:NetScope.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -54,9 +54,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A0000000000000000000000B"
-            BuildableName = "NetScope Dev.app"
-            BlueprintName = "NetScope Dev"
+            BlueprintIdentifier = "A00000000000000000000002"
+            BuildableName = "NetScope.app"
+            BlueprintName = "NetScope"
             ReferencedContainer = "container:NetScope.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -71,9 +71,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A0000000000000000000000B"
-            BuildableName = "NetScope Dev.app"
-            BlueprintName = "NetScope Dev"
+            BlueprintIdentifier = "A00000000000000000000002"
+            BuildableName = "NetScope.app"
+            BlueprintName = "NetScope"
             ReferencedContainer = "container:NetScope.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
