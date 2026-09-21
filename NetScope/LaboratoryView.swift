@@ -26,6 +26,7 @@ struct LaboratoryView: View {
         HStack { UIRefCopyButton(ref: .labs); Spacer() }
           .padding(.horizontal, 12)
         #endif
+        progressCard
         sectionPicker
         sectionContent
       }
@@ -51,6 +52,68 @@ struct LaboratoryView: View {
         Text("Usunięty zostanie wyłącznie lokalny postęp laboratorium.")
       }
     }
+  }
+
+  private var progressCard: some View {
+    let allSteps = missions.flatMap(\.steps)
+    let completedSteps = allSteps.filter { step in
+      missions.contains { mission in
+        progressStore.isComplete(missionID: mission.id, stepID: step.id)
+      }
+    }.count
+    let nextMission = missions.first { !missionIsComplete($0) }
+
+    return VStack(alignment: .leading, spacing: 9) {
+      HStack {
+        Label("Postęp nauki", systemImage: "chart.bar.fill")
+          .font(.subheadline.weight(.semibold))
+        Spacer()
+        Text("\(completedSteps)/\(allSteps.count)")
+          .font(.caption.monospacedDigit().weight(.semibold))
+          .foregroundStyle(.cyan)
+      }
+
+      ProgressView(value: Double(completedSteps), total: Double(max(allSteps.count, 1)))
+        .tint(.cyan)
+
+      if let nextMission {
+        NavigationLink {
+          TerminalLessonView(
+            mission: nextMission,
+            progressStore: progressStore,
+            onTryOwnNetwork: onTryOwnNetwork
+          )
+        } label: {
+          HStack(spacing: 8) {
+            Image(systemName: "play.circle.fill")
+            VStack(alignment: .leading, spacing: 1) {
+              Text("Wznów naukę")
+                .font(.caption.weight(.semibold))
+              Text(nextMission.title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+              .font(.caption2.weight(.bold))
+          }
+          .foregroundStyle(.cyan)
+        }
+        .buttonStyle(.plain)
+      } else {
+        Label("Wszystkie dostępne misje ukończone", systemImage: "checkmark.seal.fill")
+          .font(.caption.weight(.medium))
+          .foregroundStyle(.green)
+      }
+    }
+    .padding(12)
+    .background(.background, in: RoundedRectangle(cornerRadius: 14))
+    .overlay {
+      RoundedRectangle(cornerRadius: 14)
+        .stroke(Color.cyan.opacity(0.14), lineWidth: 1)
+    }
+    .padding(.horizontal, 12)
+    .padding(.top, 4)
   }
 
   private var sectionPicker: some View {

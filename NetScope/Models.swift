@@ -4,6 +4,19 @@ struct NetworkContext: Equatable, Sendable {
   let address: String
   let netmask: String
   let interfaceName: String
+  let ipv6Address: String?
+
+  init(
+    address: String,
+    netmask: String,
+    interfaceName: String,
+    ipv6Address: String? = nil
+  ) {
+    self.address = address
+    self.netmask = netmask
+    self.interfaceName = interfaceName
+    self.ipv6Address = ipv6Address
+  }
 
   var scanRangeDescription: String {
     let parts = address.split(separator: ".")
@@ -28,6 +41,14 @@ struct NetworkContext: Equatable, Sendable {
       || (octets[0] == 192 && octets[1] == 168)
       || (octets[0] == 169 && octets[1] == 254)
   }
+}
+
+struct ScanExportDocument: Codable, Sendable {
+  let title: String
+  let createdAt: Date
+  let network: String?
+  let deviceAddresses: [String]
+  let openPortCount: Int
 }
 
 struct NetworkDevice: Identifiable, Hashable, Sendable {
@@ -605,13 +626,59 @@ struct ScanSummary: Codable, Identifiable, Equatable, Sendable {
   let startedAt: Date
   let finishedAt: Date
   let profile: ScanProfile
+  let subnet: String?
+  let deviceAddresses: [String]
   let deviceCount: Int
   let openPortCount: Int
   let attentionCount: Int
 
+  private enum CodingKeys: String, CodingKey {
+    case id, startedAt, finishedAt, profile, subnet, deviceAddresses
+    case deviceCount, openPortCount, attentionCount
+  }
+
+  init(
+    id: UUID,
+    startedAt: Date,
+    finishedAt: Date,
+    profile: ScanProfile,
+    subnet: String? = nil,
+    deviceAddresses: [String] = [],
+    deviceCount: Int,
+    openPortCount: Int,
+    attentionCount: Int
+  ) {
+    self.id = id
+    self.startedAt = startedAt
+    self.finishedAt = finishedAt
+    self.profile = profile
+    self.subnet = subnet
+    self.deviceAddresses = deviceAddresses.sorted { IPv4SortKey($0) < IPv4SortKey($1) }
+    self.deviceCount = deviceCount
+    self.openPortCount = openPortCount
+    self.attentionCount = attentionCount
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      id: try values.decode(UUID.self, forKey: .id),
+      startedAt: try values.decode(Date.self, forKey: .startedAt),
+      finishedAt: try values.decode(Date.self, forKey: .finishedAt),
+      profile: try values.decode(ScanProfile.self, forKey: .profile),
+      subnet: try values.decodeIfPresent(String.self, forKey: .subnet),
+      deviceAddresses: try values.decodeIfPresent([String].self, forKey: .deviceAddresses) ?? [],
+      deviceCount: try values.decode(Int.self, forKey: .deviceCount),
+      openPortCount: try values.decode(Int.self, forKey: .openPortCount),
+      attentionCount: try values.decode(Int.self, forKey: .attentionCount)
+    )
+  }
+
   var duration: TimeInterval {
     finishedAt.timeIntervalSince(startedAt)
   }
+
+  var isComparable: Bool { !deviceAddresses.isEmpty }
 }
 
 struct ScanSessionDetails: Identifiable, Equatable, Sendable {

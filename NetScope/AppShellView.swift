@@ -3,13 +3,14 @@ import SwiftUI
 enum AppTab: Int, Hashable {
   case dashboard = 0
   case network = 1
-  case security = 2
-  // Keep the existing raw values for restored SceneStorage selections.
-  case toolbox = 3
+  case scan = 2
+  case diagnose = 3
   case laboratory = 4
+  // Toolbox is opened from Start and is kept out of the primary tab bar.
+  case toolbox = 5
 
   static let navigationOrder: [AppTab] = [
-    .dashboard, .network, .security, .laboratory, .toolbox,
+    .dashboard, .network, .scan, .diagnose, .laboratory,
   ]
 
   static func restored(from rawValue: Int) -> AppTab {
@@ -65,17 +66,18 @@ struct AppShellView: View {
         scanner: scanner,
         tools: tools,
         knownDeviceStore: knownDeviceStore,
-        selectedTab: selectedTab
+        selectedTab: selectedTab,
+        workspaceRouteRaw: $ishWorkspaceRouteRaw
       )
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+      NetworkOverviewView(scanner: scanner, tools: tools, knownDeviceStore: knownDeviceStore)
         .tabItem { Label("Network", systemImage: "network") }.tag(AppTab.network)
-      SecurityView(scanner: scanner)
-        .tabItem { Label("Security", systemImage: "lock.shield") }.tag(AppTab.security)
+      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+        .tabItem { Label("Scan", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.scan)
+      DiagnosticsView(model: tools)
+        .tabItem { Label("Diagnose", systemImage: "waveform.path.ecg") }.tag(AppTab.diagnose)
       LaboratoryView(onTryOwnNetwork: {})
         .tabItem { Label("Lab", systemImage: "graduationcap.fill") }.tag(AppTab.laboratory)
-      ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
-        .tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }.tag(AppTab.toolbox)
     }
     .tint(.cyan)
     .alert("Problem z zapamiętanymi urządzeniami", isPresented: storeErrorIsPresented) {
@@ -101,6 +103,7 @@ struct AppShellView: View {
 struct DevicesView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
+  @State private var filter: DeviceFilter = .all
 
   var body: some View {
     Group {
@@ -118,7 +121,9 @@ struct DevicesView: View {
           Text("Wróć do ekranu Start i wykonaj skan prywatnej sieci lokalnej.")
         }
       } else {
-        List(scanner.devices) { device in
+        DeviceFilterBar(selection: $filter)
+          .padding(.horizontal, 12)
+        List(filteredDevices) { device in
           NavigationLink {
             DeviceDetailView(device: device, key: key(for: device), knownDeviceStore: knownDeviceStore)
           } label: {
@@ -145,6 +150,12 @@ struct DevicesView: View {
   private func status(for device: NetworkDevice) -> DeviceRegistryStatus {
     guard let key = key(for: device) else { return .unknown }
     return DeviceRegistryStatus(record: knownDeviceStore.record(for: key), isNew: scanner.newDeviceKeys.contains(key))
+  }
+
+  private var filteredDevices: [NetworkDevice] {
+    scanner.devices
+      .filter { filter.matches($0, registryStatus: status(for: $0)) }
+      .sorted { IPv4SortKey($0.address) < IPv4SortKey($1.address) }
   }
 }
 

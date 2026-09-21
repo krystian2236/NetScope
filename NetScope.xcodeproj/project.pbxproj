@@ -51,6 +51,7 @@
 		E0000000000000000000004A /* VirtualLabEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004A /* VirtualLabEngine.swift */; };
 		E0000000000000000000004B /* VirtualNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004B /* VirtualNetwork.swift */; };
 		E0000000000000000000004C /* BuildVariant.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004C /* BuildVariant.swift */; };
+		E0000000000000000000004D /* AppReleaseIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004D /* AppReleaseIdentity.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -111,6 +112,7 @@
 		F0000000000000000000004A /* VirtualLabEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualLabEngine.swift; sourceTree = "<group>"; };
 		F0000000000000000000004B /* VirtualNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualNetwork.swift; sourceTree = "<group>"; };
 		F0000000000000000000004C /* BuildVariant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildVariant.swift; sourceTree = "<group>"; };
+		F0000000000000000000004D /* AppReleaseIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReleaseIdentity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -181,6 +183,7 @@
 				F0000000000000000000004A /* VirtualLabEngine.swift */,
 				F0000000000000000000004B /* VirtualNetwork.swift */,
 				F0000000000000000000004C /* BuildVariant.swift */,
+				F0000000000000000000004D /* AppReleaseIdentity.swift */,
 				F0000000000000000000001B /* ScanDetailsView.swift */,
 				F00000000000000000000007 /* ScannerView.swift */,
 				F00000000000000000000008 /* SupportingViews.swift */,
@@ -345,6 +348,7 @@
 				E0000000000000000000004A /* VirtualLabEngine.swift in Sources */,
 				E0000000000000000000004B /* VirtualNetwork.swift in Sources */,
 				E0000000000000000000004C /* BuildVariant.swift in Sources */,
+				E0000000000000000000004D /* AppReleaseIdentity.swift in Sources */,
 				E00000000000000000000018 /* ScanDetailsView.swift in Sources */,
 				E00000000000000000000007 /* ScannerView.swift in Sources */,
 				E00000000000000000000008 /* SupportingViews.swift in Sources */,
@@ -476,7 +480,7 @@
 				APP_DISPLAY_NAME = "NetScope Dev";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NetScope/Info.plist;
@@ -502,7 +506,7 @@
 				APP_DISPLAY_NAME = NetScope;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NetScope/Info.plist;

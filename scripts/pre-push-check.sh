@@ -35,6 +35,9 @@ if git ls-files | grep -E "$suspicious_pattern" >/dev/null; then
 fi
 print "Nazwy plików: OK"
 
+print "\n=== Wersjonowanie ==="
+zsh "$repo_root/scripts/check-versioning.sh"
+
 print "\n=== Integralność projektu ==="
 if "$repo_root/scripts/test-project-integrity.sh" >"$check_log" 2>&1; then
   grep -E '\*\* BUILD SUCCEEDED \*\*|Integralność bundle: OK' "$check_log"

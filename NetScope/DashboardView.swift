@@ -5,6 +5,7 @@ struct DashboardView: View {
   @ObservedObject var tools: NetworkToolsModel
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @Binding var selectedTab: AppTab
+  @Binding var workspaceRouteRaw: String
 
   private var openPortCount: Int {
     scanner.devices.reduce(0) { $0 + $1.openPorts.count }
@@ -39,7 +40,11 @@ struct DashboardView: View {
           }
           #endif
           networkHeader
+          AppReleaseIdentityCard()
+          primaryScanAction
+          primaryActions
           metrics
+          networkHealth
           changes
           scanStatus
           history
@@ -66,36 +71,163 @@ struct DashboardView: View {
     }
   }
 
-  private var networkHeader: some View {
-    HStack(spacing: 11) {
-      Image(systemName: "network")
-        .font(.title3.weight(.semibold))
-        .foregroundStyle(.cyan)
-        .frame(width: 42, height: 42)
-        .background(.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-      VStack(alignment: .leading, spacing: 2) {
-        Text("Monitor sieci lokalnej")
-          .font(.subheadline.weight(.bold))
-        Text(scanner.context?.address ?? "Połącz iPhone’a z Wi‑Fi")
-          .font(.caption.monospaced())
-          .foregroundStyle(.secondary)
+  private var primaryScanAction: some View {
+    Button {
+      selectedTab = .scan
+    } label: {
+      HStack(spacing: 11) {
+        Image(systemName: primaryActionIcon)
+          .font(.headline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 2) {
+          Text(primaryActionTitle)
+            .font(.subheadline.weight(.semibold))
+          Text(primaryActionSubtitle)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.8))
+        }
+        Spacer()
+        Image(systemName: "chevron.right")
+          .font(.caption.weight(.bold))
       }
-      Spacer()
-      #if NETSCOPE_DEV
-      UIRefCopyButton(ref: .dashboardNetworkHeader)
-      #endif
-      if let context = scanner.context {
-        Text(context.scanRangeDescription)
-          .font(.caption2.monospaced())
-          .padding(.horizontal, 7)
-          .padding(.vertical, 4)
-          .foregroundStyle(.cyan)
-          .background(.cyan.opacity(0.1), in: Capsule())
+      .foregroundStyle(.white)
+      .padding(14)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color.cyan.gradient, in: RoundedRectangle(cornerRadius: 16))
+    }
+    .buttonStyle(.plain)
+    #if NETSCOPE_DEV
+    .accessibilityIdentifier(UIRef.dashboardPrimaryAction.rawValue)
+    #endif
+  }
+
+  private var primaryActionTitle: String {
+    if scanner.phase.isScanning { return "Skanowanie w toku" }
+    if hasChanges { return "Pokaż zmiany sieci" }
+    if !scanner.devices.isEmpty { return "Pokaż ostatnie wyniki" }
+    return "Skanuj sieć lokalną"
+  }
+
+  private var primaryActionSubtitle: String {
+    if scanner.phase.isScanning { return "Przejdź do postępu skanu" }
+    if hasChanges { return "Nowe lub zmienione urządzenia" }
+    if !scanner.devices.isEmpty { return "Urządzenia i wykryte usługi" }
+    return "Tylko prywatny zakres sieci"
+  }
+
+  private var primaryActionIcon: String {
+    if scanner.phase.isScanning { return "hourglass" }
+    if hasChanges { return "arrow.triangle.2.circlepath" }
+    if !scanner.devices.isEmpty { return "list.bullet.rectangle" }
+    return "dot.radiowaves.left.and.right"
+  }
+
+  private var primaryActions: some View {
+    VStack(alignment: .leading, spacing: 9) {
+      HStack {
+        Text("Szybki dostęp")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(.secondary)
+        Spacer()
+        #if NETSCOPE_DEV
+        UIRefCopyButton(ref: .dashboardActions)
+        #endif
+      }
+
+      LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+        actionButton("Network", icon: "network", tab: .network)
+        actionButton("Scan", icon: "dot.radiowaves.left.and.right", tab: .scan)
+        actionButton("Diagnose", icon: "waveform.path.ecg", tab: .diagnose)
+        actionButton("Lab", icon: "graduationcap.fill", tab: .laboratory)
+      }
+
+      NavigationLink {
+        ToolboxView(scanner: scanner, workspaceRouteRaw: $workspaceRouteRaw)
+      } label: {
+        Label("Otwórz Toolbox", systemImage: "wrench.and.screwdriver")
+          .font(.caption.weight(.semibold))
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.bordered)
+      .tint(.cyan)
+    }
+  }
+
+  private func actionButton(_ title: String, icon: String, tab: AppTab) -> some View {
+    Button { selectedTab = tab } label: {
+      Label(title, systemImage: icon)
+        .font(.caption.weight(.semibold))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(11)
+        .background(.background, in: RoundedRectangle(cornerRadius: 13))
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.primary)
+  }
+
+  private var networkHealth: some View {
+    VStack(alignment: .leading, spacing: 9) {
+      HStack {
+        Text("Network Health")
+          .font(.caption.weight(.semibold))
+        Spacer()
+        #if NETSCOPE_DEV
+        UIRefCopyButton(ref: .dashboardHealth)
+        #endif
+      }
+
+      HStack(spacing: 8) {
+        healthPill(title: scanner.context == nil ? "Offline" : "Local", color: scanner.context == nil ? .orange : .green)
+        healthPill(title: "\(scanner.devices.count) urządzeń", color: .cyan)
+        healthPill(title: "\(openPortCount) usług", color: .indigo)
       }
     }
-    .overlay(alignment: .topTrailing) {
-      StatusPill(title: scanner.context == nil ? "Offline" : "Local")
-        .padding(10)
+    .padding(12)
+    .background(.background, in: RoundedRectangle(cornerRadius: 14))
+  }
+
+  private func healthPill(title: String, color: Color) -> some View {
+    Text(title)
+      .font(.caption2.weight(.semibold))
+      .foregroundStyle(color)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 5)
+      .background(color.opacity(0.11), in: Capsule())
+  }
+
+  private var networkHeader: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 11) {
+        Image(systemName: "network")
+          .font(.title3.weight(.semibold))
+          .foregroundStyle(.cyan)
+          .frame(width: 42, height: 42)
+          .background(.cyan.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Monitor sieci lokalnej")
+            .font(.subheadline.weight(.bold))
+          Text(scanner.context?.address ?? "Połącz iPhone’a z Wi‑Fi")
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+        }
+        Spacer(minLength: 6)
+        StatusPill(title: scanner.context == nil ? "Offline" : "Local")
+        #if NETSCOPE_DEV
+        UIRefCopyButton(ref: .dashboardNetworkHeader)
+        #endif
+      }
+
+      if let context = scanner.context {
+        HStack {
+          Text("Zakres lokalny")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+          Spacer()
+          Text(context.scanRangeDescription)
+            .font(.caption2.monospaced())
+            .foregroundStyle(.cyan)
+            .textSelection(.enabled)
+        }
+      }
     }
     .padding(13)
     .background(.background, in: RoundedRectangle(cornerRadius: 16))
@@ -220,7 +352,7 @@ struct DashboardView: View {
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
           .accessibilityLabel("Postęp skanowania sieci")
-          .accessibilityValue("(completed) z (total) adresów")
+          .accessibilityValue("\(completed) z \(total) adresów")
       }
       .padding(11)
       .background(.background, in: RoundedRectangle(cornerRadius: 13))
@@ -243,6 +375,12 @@ struct DashboardView: View {
           #if NETSCOPE_DEV
           UIRefCopyButton(ref: .history)
           #endif
+        }
+
+        if let change = historyChange {
+          Text(change)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(.cyan)
         }
 
         ForEach(scanner.history.prefix(4)) { summary in
@@ -274,6 +412,121 @@ struct DashboardView: View {
           .stroke(Color.cyan.opacity(0.12), lineWidth: 1)
       }
     }
+  }
+
+  private var historyChange: String? {
+    guard scanner.history.count > 1 else { return nil }
+    let latest = scanner.history[0]
+    let previous = scanner.history[1]
+    guard latest.isComparable, previous.isComparable else { return nil }
+
+    let current = Set(latest.deviceAddresses)
+    let old = Set(previous.deviceAddresses)
+    let appeared = current.subtracting(old).count
+    let disappeared = old.subtracting(current).count
+    guard appeared > 0 || disappeared > 0 else { return "Bez zmian względem poprzedniego skanu" }
+
+    var parts: [String] = []
+    if appeared > 0 { parts.append("+\(appeared) nowych") }
+    if disappeared > 0 { parts.append("-\(disappeared) zniknęło") }
+    return parts.joined(separator: " • ") + " względem poprzedniego skanu"
+  }
+}
+
+struct NetworkOverviewView: View {
+  @ObservedObject var scanner: NetworkScanner
+  @ObservedObject var tools: NetworkToolsModel
+  @ObservedObject var knownDeviceStore: KnownDeviceStore
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .networkOverview); Spacer() }
+          #endif
+
+          if let context = scanner.context ?? tools.localContext {
+            overviewCard(context)
+          } else {
+            ContentUnavailableView(
+              "Brak aktywnego interfejsu",
+              systemImage: "wifi.slash",
+              description: Text("Połącz urządzenie z siecią Wi‑Fi i odśwież ekran.")
+            )
+            .frame(minHeight: 180)
+          }
+
+          NavigationLink {
+            ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+          } label: {
+            Label("Przejdź do skanu sieci", systemImage: "dot.radiowaves.left.and.right")
+              .font(.subheadline.weight(.semibold))
+              .frame(maxWidth: .infinity)
+          }
+          .buttonStyle(.borderedProminent)
+          .tint(.cyan)
+        }
+        .padding(12)
+      }
+      .background(Color(.systemGroupedBackground))
+      .navigationTitle("Network")
+      .navigationBarTitleDisplayMode(.inline)
+      .task {
+        scanner.refreshContext()
+        tools.refreshLocalContext()
+      }
+    }
+  }
+
+  private func overviewCard(_ context: NetworkContext) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Label("Network Status", systemImage: "network")
+          .font(.headline)
+        Spacer()
+        StatusPill(title: "Connected", tint: .green)
+      }
+
+      AddressRow(label: "Local IPv4", value: context.address)
+      AddressRow(label: "IPv6", value: context.ipv6Address ?? "Niedostępny")
+      AddressRow(label: "Interface", value: context.interfaceName)
+      AddressRow(label: "Subnet", value: context.scanRangeDescription)
+      AddressRow(label: "Netmask", value: context.netmask)
+
+      Text("Dane pochodzą z aktywnego interfejsu urządzenia. Brakujące informacje nie są uzupełniane sztucznie.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+      ShareLink(item: networkSummary(context), subject: Text("NetScope — podsumowanie sieci")) {
+        Label("Udostępnij podsumowanie", systemImage: "square.and.arrow.up")
+          .font(.caption.weight(.semibold))
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.bordered)
+      .tint(.cyan)
+
+      Text("Podsumowanie zawiera lokalny adres, interfejs i zakres sieci. Udostępniaj je tylko zaufanym osobom.")
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+    .padding(14)
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    .overlay {
+      RoundedRectangle(cornerRadius: 16)
+      .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+    }
+  }
+
+  private func networkSummary(_ context: NetworkContext) -> String {
+    """
+    NetScope — podsumowanie sieci
+    IPv4: \(context.address)
+    IPv6: \(context.ipv6Address ?? "niedostępny")
+    Interfejs: \(context.interfaceName)
+    Zakres: \(context.scanRangeDescription)
+    Maska: \(context.netmask)
+    """
   }
 }
 

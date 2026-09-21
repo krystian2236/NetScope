@@ -10,11 +10,12 @@ struct SessionRestorationTests {
     #expect(AppTab.restored(from: 999) == .dashboard)
   }
 
-  @Test("Primary navigation keeps network and security separate")
-  func primaryNavigationKeepsNetworkAndSecuritySeparate() {
-    #expect(AppTab.navigationOrder == [.dashboard, .network, .security, .laboratory, .toolbox])
+  @Test("Primary navigation separates network workspaces")
+  func primaryNavigationSeparatesNetworkWorkspaces() {
+    #expect(AppTab.navigationOrder == [.dashboard, .network, .scan, .diagnose, .laboratory])
     #expect(AppTab.restored(from: 1) == .network)
-    #expect(AppTab.restored(from: 2) == .security)
+    #expect(AppTab.restored(from: 2) == .scan)
+    #expect(AppTab.restored(from: 3) == .diagnose)
     #expect(AppTab.restored(from: 4) == .laboratory)
   }
 
@@ -75,6 +76,15 @@ struct ToolboxWorkflowTests {
   @Test("Toolbox exposes Nmap and Nuclei")
   func toolboxExposesBothLearningTools() {
     #expect(ToolboxEntry.allCases == [.reconnaissance, .nuclei])
+  }
+
+  @Test("Free access stays local and bounded")
+  func freeAccessHasNoProFeatures() {
+    let access = NetScopeAccessController(level: .free)
+    #expect(access.allows(.quickScan))
+    #expect(access.allows(.basicDiagnostics))
+    #expect(!access.allows(.customPorts))
+    #expect(!access.allows(.compareScans))
   }
 }
 
@@ -753,6 +763,42 @@ struct KnownDeviceModelTests {
     let statuses: [DeviceRegistryStatus] = [.new, .unknown, .trusted, .trusted]
 
     #expect(DeviceRegistryStatus.reviewCount(in: statuses) == 2)
+  }
+}
+
+@Suite("Scan history")
+struct ScanHistoryTests {
+  @Test("Old history remains readable and comparable summaries are normalized")
+  func oldHistoryRemainsReadable() throws {
+    let json = """
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "startedAt": 0,
+      "finishedAt": 60,
+      "profile": "quick",
+      "deviceCount": 1,
+      "openPortCount": 2,
+      "attentionCount": 0
+    }
+    """.data(using: .utf8)!
+
+    let summary = try JSONDecoder().decode(ScanSummary.self, from: json)
+    #expect(summary.deviceAddresses.isEmpty)
+    #expect(summary.isComparable == false)
+
+    let current = ScanSummary(
+      id: UUID(),
+      startedAt: .now,
+      finishedAt: .now,
+      profile: .quick,
+      subnet: "192.168.1.0/24",
+      deviceAddresses: ["192.168.1.20", "192.168.1.3"],
+      deviceCount: 2,
+      openPortCount: 2,
+      attentionCount: 0
+    )
+    #expect(current.deviceAddresses == ["192.168.1.3", "192.168.1.20"])
+    #expect(current.isComparable)
   }
 }
 

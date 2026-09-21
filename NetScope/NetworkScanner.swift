@@ -187,6 +187,8 @@ final class NetworkScanner: ObservableObject {
       startedAt: startedAt,
       finishedAt: finishedAt,
       profile: profile,
+      subnet: context?.scanRangeDescription,
+      deviceAddresses: devices.map(\.address),
       deviceCount: devices.count,
       openPortCount: devices.reduce(0) { $0 + $1.openPorts.count },
       attentionCount: devices.filter { $0.exposure == .high }.count
@@ -298,7 +300,7 @@ private struct HostProbeOutcome: Sendable {
   let deniedCount: Int
 }
 
-private struct IPv4SortKey: Comparable {
+struct IPv4SortKey: Comparable {
   private let value: UInt32
 
   init(_ address: String) {

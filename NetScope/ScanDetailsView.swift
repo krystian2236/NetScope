@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct ScanDetailsView: View {
@@ -14,6 +15,7 @@ struct ScanDetailsView: View {
           metrics(details)
           probeBreakdown(details)
           configuration(details)
+          exportCard(details)
           InfoBanner(
             icon: "info.circle",
             title: "Jak czytać wyniki",
@@ -34,6 +36,63 @@ struct ScanDetailsView: View {
     .background(Color(.systemGroupedBackground))
     .navigationTitle("Szczegóły skanu")
     .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private func exportCard(_ details: ScanSessionDetails) -> some View {
+    ToolCard(
+      icon: "square.and.arrow.up",
+      title: "Eksport wyników",
+      subtitle: "Lokalne podsumowanie bez wysyłania do chmury"
+    ) {
+      VStack(spacing: 8) {
+        ShareLink(item: jsonExport(details), subject: Text("NetScope JSON")) {
+          Label("Udostępnij JSON", systemImage: "curlybraces")
+            .font(.caption.weight(.semibold))
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+
+        ShareLink(item: csvExport, subject: Text("NetScope CSV")) {
+          Label("Udostępnij CSV", systemImage: "tablecells")
+            .font(.caption.weight(.semibold))
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+
+        Text("Eksport może zawierać lokalne adresy IP i nazwy hostów. Udostępniaj go tylko zaufanym osobom.")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+
+  private func jsonExport(_ details: ScanSessionDetails) -> String {
+    let document = ScanExportDocument(
+      title: "NetScope Scan",
+      createdAt: details.finishedAt ?? Date(),
+      network: details.subnet,
+      deviceAddresses: scanner.devices.map(\.address),
+      openPortCount: details.openPorts
+    )
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    encoder.dateEncodingStrategy = .iso8601
+    guard let data = try? encoder.encode(document),
+      let value = String(data: data, encoding: .utf8)
+    else {
+      return "{}"
+    }
+    return value
+  }
+
+  private var csvExport: String {
+    let header = "ip,hostname,open_ports,last_seen"
+    let rows = scanner.devices.map { device in
+      let hostname = (device.hostname ?? "").replacingOccurrences(of: "\"", with: "\"\"")
+      let ports = device.openPorts.map(String.init).joined(separator: ";")
+      return "\(device.address),\"\(hostname)\",\"\(ports)\",\"\(device.lastSeen.formatted(.iso8601))\""
+    }
+    return ([header] + rows).joined(separator: "\n")
   }
 
   private func progressCard(_ details: ScanSessionDetails) -> some View {

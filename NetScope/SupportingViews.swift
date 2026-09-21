@@ -484,7 +484,7 @@ struct ServicesView: View {
 }
 
 struct AboutView: View {
-  private let bundle = Bundle.main
+  private let identity = AppReleaseIdentity.current
 
   var body: some View {
     List {
@@ -492,11 +492,11 @@ struct AboutView: View {
       HStack { UIRefCopyButton(ref: .about); Spacer() }
       #endif
       Section("Wersja") {
-        LabeledContent("Nazwa", value: displayName)
-        LabeledContent("Wersja", value: version)
-        LabeledContent("Build", value: build)
-        LabeledContent("Bundle ID", value: bundleIdentifier)
-        LabeledContent("Tryb", value: distribution)
+        LabeledContent("Nazwa", value: identity.displayName)
+        LabeledContent("Wersja", value: identity.version)
+        LabeledContent("Build", value: identity.build)
+        LabeledContent("Bundle ID", value: identity.bundleIdentifier)
+        LabeledContent("Tryb", value: identity.distribution)
         Text("Natywny zestaw narzędzi do obserwacji własnej sieci na iOS.")
           .font(.caption)
           .foregroundStyle(.secondary)
@@ -546,29 +546,6 @@ struct AboutView: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  private var displayName: String {
-    bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "NetScope"
-  }
-
-  private var version: String {
-    bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-  }
-
-  private var build: String {
-    bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-  }
-
-  private var bundleIdentifier: String {
-    bundle.bundleIdentifier ?? "—"
-  }
-
-  private var distribution: String {
-    #if NETSCOPE_DEV
-    "Developer"
-    #else
-    "App Store"
-    #endif
-  }
 }
 
 struct ScanCSVDocument: FileDocument {

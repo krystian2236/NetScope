@@ -23,7 +23,7 @@ struct DiagnosticsView: View {
         .padding(12)
       }
       .background(Color(.systemGroupedBackground))
-      .navigationTitle("Ping i adresy")
+      .navigationTitle("Network Diagnostics")
       .navigationBarTitleDisplayMode(.inline)
       .task {
         model.refreshLocalContext()

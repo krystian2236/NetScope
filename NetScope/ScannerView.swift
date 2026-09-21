@@ -208,7 +208,7 @@ private struct ScanWorkflowView: View {
   }
 }
 
-private enum DeviceFilter: String, CaseIterable, Identifiable {
+enum DeviceFilter: String, CaseIterable, Identifiable {
   case all
   case unknown
   case attention
@@ -375,7 +375,7 @@ private struct ScanStatusView: View {
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
           .accessibilityLabel("Postęp skanowania")
-          .accessibilityValue("(completed) z (total) adresów")
+          .accessibilityValue("\(completed) z \(total) adresów")
       }
     case .finished(let date):
       InfoBanner(
@@ -425,7 +425,7 @@ private struct DeviceSummaryStrip: View {
   }
 }
 
-private struct DeviceFilterBar: View {
+struct DeviceFilterBar: View {
   @Binding var selection: DeviceFilter
 
   var body: some View {
