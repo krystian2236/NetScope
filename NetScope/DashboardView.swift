@@ -103,23 +103,23 @@ struct DashboardView: View {
   }
 
   private var primaryActionTitle: String {
-    if scanner.phase.isScanning { return "Skanowanie w toku" }
-    if hasChanges { return "Pokaż zmiany sieci" }
-    if !scanner.devices.isEmpty { return "Pokaż ostatnie wyniki" }
-    return "Skanuj sieć lokalną"
+    if reviewCount > 0 { return "Przejrzyj zmiany" }
+    if scanner.phase.isScanning { return "Pokaż skan" }
+    if !scanner.history.isEmpty { return "Skanuj ponownie" }
+    return "Rozpocznij pierwszy skan"
   }
 
   private var primaryActionSubtitle: String {
+    if reviewCount > 0 { return "Nowe lub nieznane urządzenia" }
     if scanner.phase.isScanning { return "Przejdź do postępu skanu" }
-    if hasChanges { return "Nowe lub zmienione urządzenia" }
-    if !scanner.devices.isEmpty { return "Urządzenia i wykryte usługi" }
+    if !scanner.history.isEmpty { return "Uruchom skan z ekranu Scan" }
     return "Tylko prywatny zakres sieci"
   }
 
   private var primaryActionIcon: String {
+    if reviewCount > 0 { return "exclamationmark.bubble" }
     if scanner.phase.isScanning { return "hourglass" }
-    if hasChanges { return "arrow.triangle.2.circlepath" }
-    if !scanner.devices.isEmpty { return "list.bullet.rectangle" }
+    if !scanner.history.isEmpty { return "arrow.clockwise" }
     return "dot.radiowaves.left.and.right"
   }
 
@@ -178,7 +178,6 @@ struct DashboardView: View {
       }
 
       HStack(spacing: 8) {
-        healthPill(title: scanner.context == nil ? "Offline" : "Local", color: scanner.context == nil ? .orange : .green)
         healthPill(title: "\(scanner.devices.count) urządzeń", color: .cyan)
         healthPill(title: "\(openPortCount) usług", color: .indigo)
       }

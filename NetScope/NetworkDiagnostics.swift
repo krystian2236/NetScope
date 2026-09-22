@@ -129,57 +129,64 @@ enum TCPPortProbe {
     port: UInt16,
     timeout: TimeInterval = 1.5
   ) async -> TCPConnectionResult {
-    await withCheckedContinuation { continuation in
-      guard let nwPort = NWEndpoint.Port(rawValue: port) else {
-        continuation.resume(
-          returning: TCPConnectionResult(
-            host: host,
-            port: port,
-            status: .closed,
-            latencyMilliseconds: nil
+    let cancellation = TCPProbeCancellation()
+
+    return await withTaskCancellationHandler(operation: {
+      await withCheckedContinuation { continuation in
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+          continuation.resume(
+            returning: TCPConnectionResult(
+              host: host,
+              port: port,
+              status: .closed,
+              latencyMilliseconds: nil
+            )
           )
+          return
+        }
+
+        let startedAt = DispatchTime.now().uptimeNanoseconds
+        let connection = NWConnection(
+          host: NWEndpoint.Host(host),
+          port: nwPort,
+          using: .tcp
         )
-        return
-      }
+        let queue = DispatchQueue(
+          label: "pl.krystian.NetScope.tcp.\(port)",
+          qos: .userInitiated
+        )
+        let completion = TCPProbeCompletion(
+          continuation: continuation,
+          connection: connection,
+          host: host,
+          port: port,
+          startedAt: startedAt
+        )
+        cancellation.set(completion)
 
-      let startedAt = DispatchTime.now().uptimeNanoseconds
-      let connection = NWConnection(
-        host: NWEndpoint.Host(host),
-        port: nwPort,
-        using: .tcp
-      )
-      let queue = DispatchQueue(
-        label: "pl.krystian.NetScope.tcp.\(port)",
-        qos: .userInitiated
-      )
-      let completion = TCPProbeCompletion(
-        continuation: continuation,
-        connection: connection,
-        host: host,
-        port: port,
-        startedAt: startedAt
-      )
-
-      connection.stateUpdateHandler = { state in
-        switch state {
-        case .ready:
-          completion.finish(.open)
-        case .waiting:
-          if connection.currentPath?.unsatisfiedReason == .localNetworkDenied {
-            completion.finish(.localNetworkDenied)
+        connection.stateUpdateHandler = { state in
+          switch state {
+          case .ready:
+            completion.finish(.open)
+          case .waiting:
+            if connection.currentPath?.unsatisfiedReason == .localNetworkDenied {
+              completion.finish(.localNetworkDenied)
+            }
+          case .failed, .cancelled:
+            completion.finish(.closed)
+          default:
+            break
           }
-        case .failed, .cancelled:
-          completion.finish(.closed)
-        default:
-          break
+        }
+
+        connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + timeout) {
+          completion.finish(.timedOut)
         }
       }
-
-      connection.start(queue: queue)
-      queue.asyncAfter(deadline: .now() + timeout) {
-        completion.finish(.timedOut)
-      }
-    }
+    }, onCancel: {
+      cancellation.cancel()
+    })
   }
 
   static func scan(
@@ -349,6 +356,31 @@ enum PublicIPClient {
   }
 }
 
+private final class TCPProbeCancellation: @unchecked Sendable {
+  private let lock = NSLock()
+  private var completion: TCPProbeCompletion?
+  private var isCancelled = false
+
+  func set(_ completion: TCPProbeCompletion) {
+    lock.lock()
+    if isCancelled {
+      lock.unlock()
+      completion.cancel()
+      return
+    }
+    self.completion = completion
+    lock.unlock()
+  }
+
+  func cancel() {
+    lock.lock()
+    isCancelled = true
+    let completion = self.completion
+    lock.unlock()
+    completion?.cancel()
+  }
+}
+
 private final class TCPProbeCompletion: @unchecked Sendable {
   private let lock = NSLock()
   private var completed = false
@@ -370,6 +402,10 @@ private final class TCPProbeCompletion: @unchecked Sendable {
     self.host = host
     self.port = port
     self.startedAt = startedAt
+  }
+
+  func cancel() {
+    finish(.closed)
   }
 
   func finish(_ status: TCPConnectionStatus) {

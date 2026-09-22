@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.1.1
+
+- uporządkowano priorytet głównej akcji na ekranie Start,
+- poprawiono bezpieczne anulowanie prób TCP podczas skanowania,
+- zwiększono wersję aplikacji do 2.1.1 (build 9).
+
 ## 2.1
 
 - domknięto lokalny przepływ Laboratory: Run → Result → Finding → Priority → Recommendation → Re-check,
