@@ -186,47 +186,62 @@ enum TCPPortProbe {
     host: String,
     ports: [UInt16],
     timeout: TimeInterval = 0.9,
-    batchSize: Int = 32,
-    progress: @escaping @MainActor (Int, Int) -> Void
-  ) async -> [PortScanEntry] {
-    var allResults: [PortScanEntry] = []
-    var completed = 0
+    batchSize: Int = 32
+  ) -> AsyncStream<PortScanEvent> {
+    AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+      let task = Task {
+        var allResults: [PortScanEntry] = []
+        var completed = 0
 
-    for start in stride(from: 0, to: ports.count, by: batchSize) {
-      guard !Task.isCancelled else { break }
-      let end = min(start + batchSize, ports.count)
-      let batch = Array(ports[start..<end])
+        for start in stride(from: 0, to: ports.count, by: batchSize) {
+          guard !Task.isCancelled else { break }
+          let end = min(start + batchSize, ports.count)
+          let batch = Array(ports[start..<end])
 
-      let batchResults = await withTaskGroup(of: PortScanEntry.self) { group in
-        for port in batch {
-          group.addTask {
-            let result = await check(
-              host: host,
-              port: port,
-              timeout: timeout
-            )
-            return PortScanEntry(
-              port: port,
-              status: result.status,
-              latencyMilliseconds: result.latencyMilliseconds
-            )
+          let batchResults = await withTaskGroup(of: PortScanEntry.self) { group in
+            for port in batch {
+              group.addTask {
+                let result = await check(
+                  host: host,
+                  port: port,
+                  timeout: timeout
+                )
+                return PortScanEntry(
+                  port: port,
+                  status: result.status,
+                  latencyMilliseconds: result.latencyMilliseconds
+                )
+              }
+            }
+
+            var entries: [PortScanEntry] = []
+            for await entry in group {
+              entries.append(entry)
+            }
+            return entries
           }
+
+          allResults.append(contentsOf: batchResults)
+          completed += batch.count
+          continuation.yield(.progress(completed: completed, total: ports.count))
         }
 
-        var entries: [PortScanEntry] = []
-        for await entry in group {
-          entries.append(entry)
+        if !Task.isCancelled {
+          continuation.yield(.completed(allResults.sorted { $0.port < $1.port }))
         }
-        return entries
+        continuation.finish()
       }
 
-      allResults.append(contentsOf: batchResults)
-      completed += batch.count
-      await progress(completed, ports.count)
+      continuation.onTermination = { _ in
+        task.cancel()
+      }
     }
-
-    return allResults.sorted { $0.port < $1.port }
   }
+}
+
+enum PortScanEvent: Sendable {
+  case progress(completed: Int, total: Int)
+  case completed([PortScanEntry])
 }
 
 enum DNSResolver {

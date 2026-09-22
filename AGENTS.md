@@ -53,7 +53,7 @@ Każdy nowy użytkowy ekran, zakładka, navigation destination, sheet, fullScree
 ### NetScope schemes
 
 - Przypisany Simulator: `NET`
-- UDID: `F2410F8B-1636-4ECB-88F0-CEF922887673`
+- UDID: `9C9E7705-FDDB-407D-A386-396BDB9A25B1`
 - Dotyczy zarówno scheme `NetScope Dev`, jak i `NetScope App Store`; oba używają targetu `NetScope`.
 - Wszystkie polecenia `xcodebuild`, `simctl`, install, launch oraz screenshoty dla NetScope wykonuj na tym UDID.
 - Nie wybieraj automatycznie innego Simulatora.

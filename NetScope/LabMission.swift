@@ -8,9 +8,115 @@ struct LabStep: Identifiable, Equatable, Sendable {
   let explanation: String
   var expectsFailure = false
 
+  var finding: LabFinding {
+    LabFinding.forIntent(acceptedIntent, expectsFailure: expectsFailure)
+  }
+
   func accepts(command: String, result: VirtualCommandResult) -> Bool {
     let expectedStatus: VirtualCommandResult.Status = expectsFailure ? .invalid : .success
     return result.status == expectedStatus && LabCommandIntent.parse(command) == acceptedIntent
+  }
+}
+
+enum LabPriority: String, Equatable, Sendable {
+  case low
+  case medium
+  case high
+
+  var title: String {
+    switch self {
+    case .low: "Niski"
+    case .medium: "Średni"
+    case .high: "Wysoki"
+    }
+  }
+}
+
+struct LabFinding: Equatable, Sendable {
+  let title: String
+  let what: String
+  let whyItMatters: String
+  let impact: String
+  let priority: LabPriority
+  let recommendation: String
+  let recheck: String
+
+  static func forIntent(_ intent: LabCommandIntent, expectsFailure: Bool) -> Self {
+    if expectsFailure {
+      return Self(
+        title: "Kontrolowany brak wyniku",
+        what: "Laboratorium poprawnie rozpoznało nieistniejący lub niedostępny cel.",
+        whyItMatters: "Błąd diagnostyczny powinien być czytelny, zanim zostanie potraktowany jako finding bezpieczeństwa.",
+        impact: "Brak wpływu na prawdziwą sieć — wynik pochodzi z danych demonstracyjnych.",
+        priority: .low,
+        recommendation: "Sprawdź nazwę, zakres i typ zapytania przed powtórzeniem kontroli.",
+        recheck: "Powtórz to samo polecenie po poprawieniu danych wejściowych."
+      )
+    }
+
+    switch intent {
+    case .discover:
+      return Self(
+        title: "Wykryto aktywne hosty",
+        what: "Wirtualna sieć zawiera urządzenia odpowiadające na wykrywanie.",
+        whyItMatters: "Znajomość urządzeń jest punktem wyjścia do lokalnej, defensywnej inwentaryzacji.",
+        impact: "Nieznane urządzenie może wymagać potwierdzenia właściciela i przeznaczenia.",
+        priority: .low,
+        recommendation: "Przejdź do sprawdzenia usług tylko na urządzeniach, które należą do Twojej sieci.",
+        recheck: "Uruchom ponownie wykrywanie i porównaj listę hostów."
+      )
+    case .inspect, .nmapDiagnostic:
+      return Self(
+        title: "Wykryto dostępne usługi TCP",
+        what: "Kontrolowany skan potwierdził dostępność wskazanych portów.",
+        whyItMatters: "Otwarta usługa zwiększa powierzchnię komunikacji urządzenia.",
+        impact: "Niepotrzebna lub źle zabezpieczona usługa może być dostępna dla innych urządzeń w sieci.",
+        priority: .medium,
+        recommendation: "Potwierdź potrzebę usługi, ogranicz dostęp do zaufanej sieci i sprawdź konfigurację.",
+        recheck: "Powtórz skan tych samych portów po zmianie konfiguracji."
+      )
+    case .connectSSH:
+      return Self(
+        title: "SSH jest dostępne",
+        what: "Host demonstracyjny przyjmuje połączenie SSH.",
+        whyItMatters: "SSH jest usługą administracyjną i wymaga szczególnie ostrożnej kontroli dostępu.",
+        impact: "Nieprawidłowa konfiguracja może zwiększyć ryzyko nieautoryzowanego logowania.",
+        priority: .medium,
+        recommendation: "Preferuj logowanie kluczem, wyłącz dostęp roota i ogranicz źródła połączeń.",
+        recheck: "Powtórz sprawdzenie portu 22 po przeglądzie konfiguracji SSH."
+      )
+    case .dig:
+      return Self(
+        title: "Odpowiedź DNS jest dostępna",
+        what: "Lokalna strefa demonstracyjna zwróciła wskazany rekord.",
+        whyItMatters: "DNS wpływa na to, jak urządzenia odnajdują usługi i hosty.",
+        impact: "Błędna lub nieoczekiwana odpowiedź może kierować diagnostykę do niewłaściwego miejsca.",
+        priority: .low,
+        recommendation: "Porównaj rekord z oczekiwaną konfiguracją i używaj jawnie zaufanego serwera DNS.",
+        recheck: "Wykonaj ponownie zapytanie i porównaj odpowiedź z poprzednim wynikiem."
+      )
+    case .curl(_, let url, _, _, _, _, _):
+      let isPlainHTTP = url.lowercased().hasPrefix("http://")
+      return Self(
+        title: isPlainHTTP ? "Usługa HTTP bez TLS" : "Endpoint HTTP(S) odpowiada",
+        what: isPlainHTTP ? "Wirtualny endpoint odpowiada bez szyfrowania transportu." : "Wirtualny endpoint odpowiedział na żądanie.",
+        whyItMatters: isPlainHTTP ? "Ruch HTTP może być obserwowany lub zmieniany przez inne urządzenia w tej samej sieci." : "Odpowiedź endpointu potwierdza jego dostępność.",
+        impact: isPlainHTTP ? "Dane sesji lub treść żądania mogłyby zostać ujawnione w prawdziwej sieci." : "Wpływ zależy od danych i konfiguracji usługi.",
+        priority: isPlainHTTP ? .high : .low,
+        recommendation: isPlainHTTP ? "Używaj HTTPS i przekierowania HTTP→HTTPS dla danych wrażliwych." : "Potwierdź certyfikat, zakres danych i zasadę najmniejszych uprawnień.",
+        recheck: "Powtórz żądanie po zmianie schematu lub konfiguracji endpointu."
+      )
+    case .nuclei:
+      return Self(
+        title: "Kontrolowana symulacja findingu",
+        what: "Wirtualny serwer został oznaczony przez scenariusz kontrolny.",
+        whyItMatters: "Szablony pomagają uporządkować przegląd konfiguracji, ale wynik wymaga potwierdzenia.",
+        impact: "W tym laboratorium brak wpływu na prawdziwy host; w realnym środowisku sprawdź zakres i dowody.",
+        priority: .medium,
+        recommendation: "Zweryfikuj konfigurację ręcznie i usuń tylko potwierdzoną przyczynę.",
+        recheck: "Uruchom ponownie ten sam scenariusz po zmianie konfiguracji."
+      )
+    }
   }
 }
 
@@ -362,6 +468,51 @@ struct LabMission: Identifiable, Equatable, Sendable {
           hints: ["SSH używa zapisu użytkownik@host.", "W laboratorium użyj użytkownika learner."],
           acceptedIntent: .connectSSH(user: "learner", host: "mac.lab"),
           explanation: "SSH łączy nazwę użytkownika i hosta znakiem @; tutaj połączenie jest wyłącznie symulowane."
+        )
+      ]
+    ),
+    LabMission(
+      id: "dns-basics",
+      title: "Sprawdź DNS",
+      summary: "Odczytaj rekord DNS w lokalnej strefie demonstracyjnej.",
+      isPro: false,
+      steps: [
+        LabStep(
+          id: "lookup",
+          objective: "Sprawdź rekord A dla web.lab.",
+          hints: ["Użyj narzędzia dig.", "Wybierz nazwę web.lab i typ A."],
+          acceptedIntent: .dig(name: "web.lab", type: "A", server: nil, short: false),
+          explanation: "Odpowiedź pochodzi wyłącznie z lokalnej, deterministycznej strefy demonstracyjnej."
+        )
+      ]
+    ),
+    LabMission(
+      id: "plain-http",
+      title: "Rozpoznaj HTTP bez TLS",
+      summary: "Zobacz, dlaczego zwykły HTTP wymaga ostrożności.",
+      isPro: false,
+      steps: [
+        LabStep(
+          id: "request",
+          objective: "Wykonaj GET na http://web.lab.",
+          hints: ["Użyj narzędzia curl.", "Cel należy do sieci demonstracyjnej."],
+          acceptedIntent: .curl(method: "GET", url: "http://web.lab", headers: [], body: nil, head: false, follow: false, timeout: nil),
+          explanation: "Scenariusz pokazuje finding transportowy bez kontaktu z Internetem."
+        )
+      ]
+    ),
+    LabMission(
+      id: "unusual-port",
+      title: "Sprawdź nietypowy port",
+      summary: "Rozpoznaj usługę drukarki na porcie 631.",
+      isPro: false,
+      steps: [
+        LabStep(
+          id: "ipp",
+          objective: "Sprawdź port 631 hosta printer.lab i rozpoznaj usługę.",
+          hints: ["Użyj skanu TCP -sT.", "Dodaj -sV, -p 631 i cel printer.lab."],
+          acceptedIntent: .inspect(host: "printer.lab", ports: [631], versions: true),
+          explanation: "Port 631 jest częsty dla IPP; wynik pozostaje symulacją."
         )
       ]
     ),

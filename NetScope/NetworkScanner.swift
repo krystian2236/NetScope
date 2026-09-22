@@ -11,6 +11,8 @@ final class NetworkScanner: ObservableObject {
   @Published private(set) var sessionDetails: ScanSessionDetails?
   @Published private(set) var newDeviceKeys: Set<KnownDeviceKey> = []
   @Published private(set) var newServiceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var closedServiceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var hostnameChangedKeys: Set<KnownDeviceKey> = []
   @Published private(set) var disappearedDeviceKeys: Set<KnownDeviceKey> = []
   @Published private(set) var stage: ScanStage = .network
   let bonjourDiscovery = BonjourDiscovery()
@@ -38,6 +40,8 @@ final class NetworkScanner: ObservableObject {
     cancellationRequested = false
     newDeviceKeys = []
     newServiceKeys = []
+    closedServiceKeys = []
+    hostnameChangedKeys = []
     disappearedDeviceKeys = []
     devices = []
     stage = .network
@@ -146,6 +150,20 @@ final class NetworkScanner: ObservableObject {
         let key = KnownDeviceKey(networkID: networkID, address: device.address)
         guard let previous = knownDeviceStore.record(for: key) else { return nil }
         return Set(previous.openPorts) == Set(device.openPorts) ? nil : key
+      }
+    )
+    closedServiceKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return Set(previous.openPorts).subtracting(device.openPorts).isEmpty ? nil : key
+      }
+    )
+    hostnameChangedKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return previous.hostname == device.hostname ? nil : key
       }
     )
     disappearedDeviceKeys = Set(

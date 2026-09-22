@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 2.1
+
+- domknięto lokalny przepływ Laboratory: Run → Result → Finding → Priority → Recommendation → Re-check,
+- dodano deterministyczne scenariusze DNS, HTTP bez TLS i nietypowego portu oraz programy Dig i Curl w Laboratory,
+- rozszerzono Scan Diff o zamknięte porty i zmienione hostname,
+- zwiększono wersję aplikacji do 2.1 (build 8).
+
+## 2.0
+
 - dodano widoczny na ekranie Start identyfikator otwartego bundle: wersja, build, tryb i Bundle ID,
 - ujednolicono identyfikację wersji między ekranem Start i O aplikacji,
 - dodano kontrolę spójności wersji, buildu i changelogu przed push.

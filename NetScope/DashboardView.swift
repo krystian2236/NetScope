@@ -26,6 +26,8 @@ struct DashboardView: View {
   private var hasChanges: Bool {
     !scanner.newDeviceKeys.isEmpty
       || !scanner.newServiceKeys.isEmpty
+      || !scanner.closedServiceKeys.isEmpty
+      || !scanner.hostnameChangedKeys.isEmpty
       || !scanner.disappearedDeviceKeys.isEmpty
   }
 
@@ -299,6 +301,22 @@ struct DashboardView: View {
             tint: .cyan,
             title: "Nowe lub zmienione usługi",
             detail: names(for: scanner.newServiceKeys)
+          )
+        }
+        if !scanner.closedServiceKeys.isEmpty {
+          ChangeRow(
+            icon: "minus.circle.fill",
+            tint: .green,
+            title: "Zamknięte porty",
+            detail: names(for: scanner.closedServiceKeys)
+          )
+        }
+        if !scanner.hostnameChangedKeys.isEmpty {
+          ChangeRow(
+            icon: "character.cursor.ibeam",
+            tint: .purple,
+            title: "Zmienione hostname",
+            detail: names(for: scanner.hostnameChangedKeys)
           )
         }
         if !scanner.disappearedDeviceKeys.isEmpty {

@@ -11,7 +11,12 @@ struct LaboratoryView: View {
 
   init(
     missions: [LabMission] = LabMission.demo,
-    programs: [LabProgram] = [NmapLabProgram.definition, NucleiLabProgram.definition],
+    programs: [LabProgram] = [
+      NmapLabProgram.definition,
+      NucleiLabProgram.definition,
+      DigLabProgram.definition,
+      CurlLabProgram.definition,
+    ],
     onTryOwnNetwork: @escaping () -> Void
   ) {
     self.missions = missions

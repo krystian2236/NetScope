@@ -3,7 +3,7 @@
 NetScope to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
 i popularne usługi w prywatnej sieci lokalnej.
 
-## Funkcje w wersji 1.4
+## Funkcje w wersji 2.1
 
 - pięć głównych zakładek: **Start**, **Network**, **Security**, **Lab** i **Tools**,
 - odświeżony pulpit w stylu Apple Pro z technicznymi kartami danych,
@@ -29,6 +29,9 @@ i popularne usługi w prywatnej sieci lokalnej.
 - skaner portów w stylu Nmap z profilami WWW, IoT, zdalnego dostępu,
   serwerów i baz danych oraz zakresem własnym do 512 portów,
 - wyniki skanowania pozostają na urządzeniu.
+- Laboratory prowadzi od uruchomienia do wyniku, findingu, priorytetu, rekomendacji i ponownej kontroli,
+- Virtual Lab zawiera deterministyczne scenariusze Nmap, SSH, DNS, Curl/HTTP i nietypowego portu,
+- Scan Diff rozróżnia nowe urządzenia, zniknięte urządzenia, nowe lub zamknięte porty oraz zmiany hostname.
 
 ## Integracja z iSH
 

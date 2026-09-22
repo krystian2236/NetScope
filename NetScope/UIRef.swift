@@ -82,7 +82,8 @@ enum UIRef: String, CaseIterable, Sendable {
     case .scannerDetails: "NetScope/ScanDetailsView.swift"
     case .scannerDeviceDetails: "NetScope/SupportingViews.swift"
     case .scannerPortScanner, .scannerDiagnostics, .scannerBonjour: "NetScope/AppShellView.swift"
-    case .labs, .labsMission: "NetScope/LaboratoryView.swift"
+    case .labs: "NetScope/LaboratoryView.swift"
+    case .labsMission: "NetScope/TerminalLessonView.swift"
     case .ssh, .sshGuide: "NetScope/SSHShortcutLibraryView.swift"
     case .about: "NetScope/SupportingViews.swift"
     }

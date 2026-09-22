@@ -39,7 +39,9 @@ struct TerminalLessonView: View {
           prompt
           developerSolution
           hints
+          findingCard
           completionCard
+          explanationCard
         }
         .padding(16)
       }
@@ -58,9 +60,9 @@ struct TerminalLessonView: View {
         .font(.headline)
         .foregroundStyle(isComplete ? .green : .cyan)
       Text(activeStep?.objective ?? mission.summary)
-        .font(.subheadline)
-      Text("Sieć demonstracyjna: \(VirtualNetwork.demo.cidr)")
-        .font(.caption.monospaced())
+        .font(.callout)
+      Label("TEST DATA • wirtualna sieć \(VirtualNetwork.demo.cidr)", systemImage: "lock.shield")
+        .font(.caption2.monospaced())
         .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,15 +73,17 @@ struct TerminalLessonView: View {
   @ViewBuilder
   private var history: some View {
     if entries.isEmpty {
-      ContentUnavailableView(
-        "Terminal czeka",
-        systemImage: "terminal",
-        description: Text("Wpisz polecenie lub skorzystaj z podpowiedzi. Nic nie zostanie wykonane poza laboratorium.")
-      )
-      .frame(minHeight: 180)
+      HStack(spacing: 8) {
+        Image(systemName: "terminal")
+        Text("Wpisz polecenie, aby rozpocząć.")
+      }
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 4)
     } else {
       VStack(alignment: .leading, spacing: 10) {
-        ForEach(entries) { entry in
+        ForEach(entries.suffix(3)) { entry in
           terminalEntry(entry)
         }
       }
@@ -89,12 +93,12 @@ struct TerminalLessonView: View {
   private var prompt: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text("lab $")
-          .font(.body.monospaced().bold())
-          .foregroundStyle(.green)
+        Text("krg $")
+          .font(.caption.monospaced().weight(.semibold))
+          .foregroundStyle(.secondary)
           .accessibilityHidden(true)
         TextField("Wpisz polecenie", text: $input, axis: .vertical)
-          .font(.body.monospaced())
+          .font(.callout.monospaced())
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .submitLabel(.go)
@@ -103,14 +107,14 @@ struct TerminalLessonView: View {
       }
 
       Button(action: runCommand) {
-        Label("Uruchom w laboratorium", systemImage: "play.fill")
+        Label("Uruchom", systemImage: "play.fill")
           .frame(maxWidth: .infinity)
       }
       .buttonStyle(.borderedProminent)
       .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
-    .padding(14)
-    .background(Color.black, in: RoundedRectangle(cornerRadius: 14))
+    .padding(12)
+    .background(Color.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 13))
     .foregroundStyle(.white)
     .id("terminal-bottom")
   }
@@ -118,11 +122,16 @@ struct TerminalLessonView: View {
   @ViewBuilder
   private var developerSolution: some View {
     if BuildVariant.current.includesDeveloperTools, let step = activeStep {
-      solutionCard(
-        LabCommandPresentation(intent: step.acceptedIntent),
-        title: "Gotowe rozwiązanie — Developer",
-        allowsActions: true
-      )
+      DisclosureGroup("Rozwiązanie Developer") {
+        solutionCard(
+          LabCommandPresentation(intent: step.acceptedIntent),
+          title: "Gotowe rozwiązanie",
+          allowsActions: true
+        )
+      }
+      .font(.caption.weight(.semibold))
+      .padding(12)
+      .background(.background, in: RoundedRectangle(cornerRadius: 12))
     }
   }
 
@@ -131,10 +140,10 @@ struct TerminalLessonView: View {
     if let step = activeStep {
       VStack(alignment: .leading, spacing: 9) {
         Label("Podpowiedzi", systemImage: "lightbulb")
-          .font(.headline)
+          .font(.subheadline.weight(.semibold))
         ForEach(Array(step.hints.prefix(revealedHintCount).enumerated()), id: \.offset) { index, hint in
           Text("\(index + 1). \(hint)")
-            .font(.subheadline)
+            .font(.caption)
         }
         if revealedHintCount >= step.hints.count, !step.hints.isEmpty {
           solutionCard(
@@ -149,8 +158,45 @@ struct TerminalLessonView: View {
         .disabled(revealedHintCount >= step.hints.count)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(14)
+      .padding(12)
       .background(.background, in: RoundedRectangle(cornerRadius: 14))
+    }
+  }
+
+  @ViewBuilder
+  private var findingCard: some View {
+    if let completedStep = mission.steps.last(where: {
+      progressStore.isComplete(missionID: mission.id, stepID: $0.id)
+    }) {
+      let finding = completedStep.finding
+      VStack(alignment: .leading, spacing: 9) {
+        HStack {
+          Label("Finding", systemImage: "exclamationmark.shield.fill")
+            .font(.subheadline.weight(.semibold))
+          Spacer()
+          Text(finding.priority.title)
+            .font(.caption.bold())
+            .foregroundStyle(finding.priority == .high ? .red : finding.priority == .medium ? .orange : .green)
+        }
+        Text(finding.title).font(.callout.weight(.semibold))
+        Text(finding.what).font(.caption)
+        Text("Dlaczego to ważne: \(finding.whyItMatters)").font(.caption).foregroundStyle(.secondary)
+        Text("Możliwy wpływ: \(finding.impact)").font(.caption).foregroundStyle(.secondary)
+        Label(finding.recommendation, systemImage: "checklist")
+          .font(.caption)
+        Label(finding.recheck, systemImage: "arrow.triangle.2.circlepath")
+          .font(.caption)
+          .foregroundStyle(.cyan)
+        Button("Przygotuj ponowną kontrolę") {
+          input = LabCommandPresentation(intent: completedStep.acceptedIntent).command
+          UIAccessibility.post(notification: .announcement, argument: "Polecenie ponownej kontroli wstawione")
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.cyan)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(12)
+      .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
     }
   }
 
@@ -177,34 +223,38 @@ struct TerminalLessonView: View {
     }
   }
 
+  @ViewBuilder
+  private var explanationCard: some View {
+    if let entry = entries.last, !entry.result.explanations.isEmpty {
+      VStack(alignment: .leading, spacing: 5) {
+        Label("Jak czytać wynik", systemImage: "info.circle")
+          .font(.caption.weight(.semibold))
+        Text(entry.result.explanations.map { "\($0.term): \($0.meaning)" }.joined(separator: " • "))
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(11)
+      .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    }
+  }
+
   private func terminalEntry(_ entry: TerminalEntry) -> some View {
     VStack(alignment: .leading, spacing: 7) {
-      Text("$ \(entry.command)")
-        .font(.subheadline.monospaced().bold())
+      Text("krg $ \(entry.command)")
+        .font(.caption.monospaced().weight(.semibold))
       Text(entry.result.output)
-        .font(.caption.monospaced())
+        .font(.caption2.monospaced())
         .foregroundStyle(color(for: entry.result.status))
       if let hint = entry.result.hint {
         Label(hint, systemImage: "info.circle.fill")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
-      if !entry.result.explanations.isEmpty {
-        DisclosureGroup("Co oznacza to polecenie?") {
-          ForEach(Array(entry.result.explanations.enumerated()), id: \.offset) { _, explanation in
-            VStack(alignment: .leading, spacing: 2) {
-              Text(explanation.term).font(.caption.monospaced().bold())
-              Text(explanation.meaning).font(.caption).foregroundStyle(.secondary)
-            }
-            .padding(.top, 5)
-          }
-        }
-        .font(.caption.weight(.semibold))
-      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(12)
-    .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+    .padding(10)
+    .background(Color.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 11))
     .foregroundStyle(.white)
   }
 

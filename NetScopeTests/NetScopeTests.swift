@@ -88,6 +88,47 @@ struct ToolboxWorkflowTests {
   }
 }
 
+@Suite("NetScope 2.1 laboratory workflow")
+struct LaboratoryWorkflowTests {
+  @Test("Demo contains the required deterministic scenarios")
+  func demoContainsRequiredScenarios() {
+    let ids = Set(LabMission.demo.map(\.id))
+
+    #expect(ids.contains("host-discovery"))
+    #expect(ids.contains("ssh-basics"))
+    #expect(ids.contains("dns-basics"))
+    #expect(ids.contains("plain-http"))
+    #expect(ids.contains("unusual-port"))
+    #expect(LabMission.demo.count >= 5)
+  }
+
+  @Test("Virtual HTTP result produces a finding and recommendation")
+  func virtualHTTPProducesFinding() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let result = VirtualLabEngine(network: .demo).execute("curl http://web.lab")
+
+    #expect(result.status == .success)
+    #expect(step.accepts(command: "curl http://web.lab", result: result))
+    #expect(step.finding.priority == .high)
+    #expect(step.finding.recommendation.contains("HTTPS"))
+    #expect(!step.finding.recheck.isEmpty)
+  }
+
+  @Test("Laboratory exposes Curl and Dig programs")
+  func laboratoryExposesCurlAndDig() {
+    let programs = [
+      NmapLabProgram.definition,
+      NucleiLabProgram.definition,
+      DigLabProgram.definition,
+      CurlLabProgram.definition,
+    ]
+
+    #expect(programs.map(\.id) == [.nmap, .nuclei, .dig, .curl])
+    #expect(programs.allSatisfy { !$0.modules.isEmpty })
+  }
+}
+
 @Suite("Tool command catalog")
 struct ToolCommandCatalogTests {
   private let tool = ToolDefinition(
@@ -958,6 +999,42 @@ struct ScannerRegistryIntegrationTests {
     let key = KnownDeviceKey(networkID: "192.168.1.0/24", address: device.address)
     #expect(store.records.count == 1)
     #expect(scanner.newDeviceKeys == Set([key]))
+  }
+
+  @Test("Registry merge reports closed ports and hostname changes")
+  func mergeReportsClosedPortsAndHostnameChanges() {
+    let url = FileManager.default.temporaryDirectory
+      .appending(path: UUID().uuidString)
+      .appendingPathExtension("json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let store = KnownDeviceStore(fileURL: url)
+    let scanner = NetworkScanner(knownDeviceStore: store)
+    let key = KnownDeviceKey(networkID: "192.168.1.0/24", address: "192.168.1.20")
+
+    scanner.completeRegistryMerge(
+      devices: [NetworkDevice(
+        address: key.address,
+        hostname: "old.local",
+        openPorts: [80, 443],
+        lastSeen: .now
+      )],
+      networkID: key.networkID,
+      at: .now
+    )
+    scanner.completeRegistryMerge(
+      devices: [NetworkDevice(
+        address: key.address,
+        hostname: "new.local",
+        openPorts: [443],
+        lastSeen: .now
+      )],
+      networkID: key.networkID,
+      at: .now
+    )
+
+    #expect(scanner.closedServiceKeys == Set([key]))
+    #expect(scanner.hostnameChangedKeys == Set([key]))
+    #expect(scanner.disappearedDeviceKeys.isEmpty)
   }
 
   @Test("Creating a scanner does not mutate the registry")
