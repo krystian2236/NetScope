@@ -82,13 +82,59 @@ enum LabCommandSanitizer {
   }
 
   private static func redactCurl(_ command: String) -> String {
-    let pattern = "(?i)(Authorization:\\s*(?:Bearer\\s+)?)[^'\\\"\\s]+"
-    guard let expression = try? NSRegularExpression(pattern: pattern) else { return command }
-    return expression.stringByReplacingMatches(
-      in: command,
-      range: NSRange(command.startIndex..., in: command),
-      withTemplate: "$1[REDACTED]"
-    )
+    let marker = "Authorization:"
+    var result = String()
+    result.reserveCapacity(command.count)
+
+    var index = command.startIndex
+    var quote: Character?
+    while index < command.endIndex {
+      let markerEnd = command.index(index, offsetBy: marker.count, limitedBy: command.endIndex)
+      let previous = index > command.startIndex ? command[command.index(before: index)] : nil
+      let isHeader = markerEnd.map {
+        command[index..<$0].caseInsensitiveCompare(marker) == .orderedSame
+          && (previous == nil || previous!.isWhitespace || previous == "'" || previous == "\"")
+      } ?? false
+
+      if isHeader, let markerEnd {
+        var valueStart = markerEnd
+        while valueStart < command.endIndex, command[valueStart].isWhitespace {
+          valueStart = command.index(after: valueStart)
+        }
+
+        var valueEnd = valueStart
+        var escaped = false
+        while valueEnd < command.endIndex {
+          let character = command[valueEnd]
+          if let quote {
+            if escaped {
+              escaped = false
+            } else if character == "\\" {
+              escaped = true
+            } else if character == quote {
+              break
+            }
+          } else if character.isWhitespace {
+            break
+          }
+          valueEnd = command.index(after: valueEnd)
+        }
+
+        result.append(contentsOf: command[index..<valueStart])
+        result.append("[REDACTED]")
+        index = valueEnd
+        continue
+      }
+
+      let character = command[index]
+      result.append(character)
+      if character == "'" || character == "\"" {
+        quote = quote == character ? nil : (quote ?? character)
+      }
+      index = command.index(after: index)
+    }
+
+    return result
   }
 }
 

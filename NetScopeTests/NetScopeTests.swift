@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 import Testing
 
@@ -71,6 +72,67 @@ struct SessionRestorationTests {
   }
 }
 
+@Suite("TCP probe cancellation")
+struct TCPProbeCancellationTests {
+  @Test("Cancelling a TCP probe completes promptly")
+  func cancellingTCPProbeCompletesPromptly() async {
+    let task = Task {
+      await TCPPortProbe.check(
+        host: "192.0.2.1",
+        port: 65_000,
+        timeout: 10
+      )
+    }
+
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    let cancellationStartedAt = Date()
+    task.cancel()
+    let result = await task.value
+
+    #expect(result.status == .closed)
+    #expect(Date().timeIntervalSince(cancellationStartedAt) < 1)
+  }
+}
+
+@Suite("Laboratory command sanitization")
+struct LaboratoryCommandSanitizationTests {
+  @Test("Authorization values are fully redacted for every scheme")
+  func authorizationValuesAreFullyRedacted() {
+    let cases = [
+      ("Bearer", "bearer-secret"),
+      ("Basic", "basic-secret"),
+      ("Digest", "digest-secret"),
+      ("CustomScheme", "custom-secret"),
+    ]
+
+    for (scheme, secret) in cases {
+      let history = LabCommandSanitizer.redactForHistory(
+        "curl -H 'Authorization: \(scheme) \(secret)' https://web.lab"
+      )
+
+      #expect(history.contains("Authorization: [REDACTED]"))
+      #expect(!history.contains(secret))
+    }
+  }
+
+  @Test("Non-secret Curl arguments remain unchanged")
+  func nonSecretCurlArgumentsRemainUnchanged() {
+    let command = "curl -X POST -H 'Accept: application/json' https://web.lab/path"
+
+    #expect(LabCommandSanitizer.redactForHistory(command) == command)
+  }
+
+  @Test("Existing Nuclei secret redaction remains unchanged")
+  func existingNucleiSecretRedactionRemainsUnchanged() {
+    let history = LabCommandSanitizer.redactForHistory(
+      "nuclei -itoken nuclei-secret -u https://web.lab"
+    )
+
+    #expect(history == "nuclei -itoken [REDACTED] -u https://web.lab")
+    #expect(!history.contains("nuclei-secret"))
+  }
+}
+
 @Suite("Toolbox workflow")
 struct ToolboxWorkflowTests {
   @Test("Toolbox exposes Nmap and Nuclei")
@@ -126,6 +188,154 @@ struct LaboratoryWorkflowTests {
 
     #expect(programs.map(\.id) == [.nmap, .nuclei, .dig, .curl])
     #expect(programs.allSatisfy { !$0.modules.isEmpty })
+  }
+
+  @Test("Virtual network contains every HTTP endpoint host")
+  func virtualNetworkContainsHTTPEndpointHosts() {
+    let network = VirtualNetwork.demo
+
+    #expect(network.httpEndpoints.allSatisfy { network.host(at: $0.host) != nil })
+    #expect(network.host(at: "API.LAB")?.address == "192.168.50.21")
+  }
+
+  @Test("Engine rejects port zero and explains supported commands")
+  func engineHandlesInvalidAndUnsupportedCommands() {
+    let engine = VirtualLabEngine(network: .demo)
+    let invalidPort = engine.execute("nmap -sT -p 0 web.lab")
+    let unsupported = engine.execute("whoami")
+
+    #expect(invalidPort.status == .invalid)
+    #expect(LabCommandIntent.parse("nmap -sT -p 0 web.lab") == nil)
+    #expect(unsupported.status == .unsupported)
+    #expect(unsupported.hint?.contains("curl") == true)
+  }
+
+  @Test("Curl handles API endpoints and case-insensitive host names")
+  func curlUsesConsistentVirtualNetwork() {
+    let engine = VirtualLabEngine(network: .demo)
+
+    #expect(engine.execute("curl -X POST http://api.lab/devices").status == .success)
+    #expect(engine.execute("curl http://WEB.LAB").status == .success)
+    #expect(engine.execute("curl http://missing.lab").status == .invalid)
+  }
+
+  @Test("Case-insensitive host spelling completes the matching mission")
+  func caseInsensitiveHostSpellingCompletesMission() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let command = "curl http://WEB.LAB"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(result.status == .success)
+    #expect(step.accepts(command: command, result: result))
+  }
+}
+
+@Suite("Terminal lesson states")
+struct TerminalLessonStateTests {
+  @Test("Aktywna lekcja nie pokazuje ukończenia")
+  func activeLessonDoesNotShowCompletion() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .active
+    )
+  }
+
+  @Test("Podpowiedzi i rozwiązanie są ujawniane świadomie")
+  func hintsGateSolution() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 1,
+        isSolutionVisible: false
+      ) == .hints
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 3,
+        isSolutionVisible: false
+      ) == .hints
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 3,
+        isSolutionVisible: true
+      ) == .solution
+    )
+  }
+
+  @Test("Ukończenie rozróżnia następny krok i finał misji")
+  func completionChoosesNextStepOrFinalCTA() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: true,
+        hasNextStep: true,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .completed(hasNextStep: true)
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: true,
+        hasNextStep: false,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .completed(hasNextStep: false)
+    )
+  }
+
+  @Test("Cel lekcji nie ujawnia gotowej komendy")
+  func learningObjectiveDoesNotExposeCommand() {
+    let step = LabMission.demo.first { $0.id == "dns-basics" }!.steps[0]
+
+    #expect(step.learningObjective == "Znajdź adres IPv4 hosta web.lab.")
+    #expect(!step.learningObjective.localizedCaseInsensitiveContains("dig"))
+  }
+
+  @Test("Poprawna komenda kończy krok, a historia redaguje sekret")
+  func acceptedCommandAndHistoryRedaction() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let command = "curl http://web.lab"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(step.accepts(command: command, result: result))
+    #expect(
+      LabCommandSanitizer.redactForHistory(
+        "curl -H 'Authorization: Bearer secret' http://web.lab"
+      ).contains("[REDACTED]")
+    )
+  }
+
+  @Test("Reset przywraca początkowy stan postępu")
+  @MainActor
+  func resetRestoresInitialProgress() {
+    let suiteName = "NetScopeTests.TerminalLesson.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let mission = LabMission.demo.first { $0.id == "dns-basics" }!
+    let step = mission.steps[0]
+    let store = LabProgressStore(defaults: defaults)
+    store.complete(missionID: mission.id, stepID: step.id)
+    #expect(store.isComplete(missionID: mission.id, stepID: step.id))
+
+    store.uncomplete(missionID: mission.id, stepID: step.id)
+    #expect(!store.isComplete(missionID: mission.id, stepID: step.id))
+
+    store.complete(missionID: mission.id, stepID: step.id)
+    store.reset(missionID: mission.id)
+    #expect(store.completedStepCount(in: mission) == 0)
   }
 }
 
@@ -457,6 +667,51 @@ final class NetScopeTests: XCTestCase {
     XCTAssertTrue(PortCatalog.info(for: 443).isEncrypted)
     XCTAssertFalse(PortCatalog.info(for: 23).isEncrypted)
     XCTAssertEqual(PortCatalog.info(for: 5432).category, "Baza danych")
+  }
+
+  func testRouterServicesAndCommandsFollowDetectedPorts() {
+    let router = NetworkDevice(
+      address: "192.168.1.1",
+      hostname: "router.local",
+      openPorts: [22, 53],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(router.openPorts.count, 2)
+    let commands = RouterReadyCommandBuilder.commands(for: router).map(\.command)
+    XCTAssertTrue(commands.contains("ssh 192.168.1.1"))
+    XCTAssertTrue(commands.contains("dig @192.168.1.1 example.com"))
+    XCTAssertTrue(commands.contains("nc -vz 192.168.1.1 22"))
+    XCTAssertFalse(commands.contains("http://192.168.1.1"))
+  }
+
+  func testRouterShowsAllDetectedServices() {
+    let router = NetworkDevice(
+      address: "192.168.1.1",
+      hostname: nil,
+      openPorts: [22, 53, 80, 443, 8080],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(router.openPorts.count, 5)
+    XCTAssertEqual(
+      router.openPorts.map { PortCatalog.transport(for: $0) },
+      ["TCP", "UDP", "TCP", "TCP", "TCP"]
+    )
+    XCTAssertTrue(PortCatalog.userValue(for: 80).contains("panel administracyjny WWW"))
+    XCTAssertNotNil(PortCatalog.routerUse(for: 443))
+  }
+
+  func testNonRouterDoesNotReceiveRouterReadyCommands() {
+    let host = NetworkDevice(
+      address: "192.168.1.20",
+      hostname: "host.local",
+      openPorts: [22, 80],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(host.kind, .computer)
+    XCTAssertTrue(RouterReadyCommandBuilder.commands(for: host).isEmpty)
   }
 
   func testDeviceProbeTelemetry() {
