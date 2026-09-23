@@ -22,11 +22,83 @@ struct LabCurriculumTests {
     #expect(LabCurriculum.firstMilestonePrograms.allSatisfy { !$0.modules.isEmpty })
   }
 
-  @Test("Developer opens Pro while Demo does not")
+  @Test("Paid lab access is independent from build variant")
   func accessPolicy() {
-    #expect(LabAccessPolicy.canOpen(.pro, state: .demo, variant: .developer))
-    #expect(!LabAccessPolicy.canOpen(.pro, state: .demo, variant: .appStore))
-    #expect(LabAccessPolicy.canOpen(.pro, state: .pro, variant: .appStore))
+    #expect(!LabAccessPolicy.canOpen(.pro, state: .demo))
+    #expect(LabAccessPolicy.canOpen(.pro, state: .pro))
+    #expect(LabAccessPolicy.canOpen(.pro, state: .subscription))
+    #expect(!LabAccessPolicy.canOpen(.subscription, state: .pro))
+    #expect(LabAccessPolicy.canOpen(.subscription, state: .subscription))
+  }
+
+  @Test("Store entitlement snapshot preserves lifetime Pro under subscription")
+  func entitlementSnapshot() {
+    let pro = NetScopeEntitlementSnapshot(
+      hasLifetimePro: true,
+      hasActiveSubscription: false
+    )
+    let both = NetScopeEntitlementSnapshot(
+      hasLifetimePro: true,
+      hasActiveSubscription: true
+    )
+
+    #expect(pro.accessState == .pro)
+    #expect(both.accessState == .subscription)
+    #expect(both.hasLifetimePro)
+  }
+
+  @Test("Unconfigured StoreKit refresh safely stays Demo")
+  @MainActor
+  func unconfiguredStoreKitRefresh() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers(),
+      initialSnapshot: NetScopeEntitlementSnapshot(
+        hasLifetimePro: true,
+        hasActiveSubscription: false
+      )
+    )
+
+    await store.refresh()
+
+    #expect(store.snapshot == .demo)
+    #expect(store.accessState == .demo)
+  }
+
+  @Test("NetScope product identifiers are deduplicated")
+  func productIdentifiers() {
+    let ids = NetScopeStoreProductIdentifiers(
+      lifetimePro: "pro",
+      subscriptions: ["monthly", "yearly", "monthly"]
+    )
+
+    #expect(ids.all == Set(["pro", "monthly", "yearly"]))
+  }
+
+  @Test("Unconfigured product loading stays offline and empty")
+  @MainActor
+  func unconfiguredProductLoading() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers()
+    )
+
+    await store.loadProducts()
+
+    #expect(store.products.isEmpty)
+    #expect(!store.isLoadingProducts)
+    #expect(store.lastError == nil)
+  }
+
+  @Test("Purchase rejects an unloaded product")
+  @MainActor
+  func purchaseRejectsUnavailableProduct() async {
+    let store = NetScopeEntitlementStore(
+      productIDs: NetScopeStoreProductIdentifiers()
+    )
+
+    let result = await store.purchase(productID: "missing")
+
+    #expect(result == .productUnavailable)
+    #expect(!store.isPurchasing)
   }
 
   @Test("Laboratory starts with learning then tool programs")

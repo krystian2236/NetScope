@@ -88,7 +88,7 @@ struct LabProgramView: View {
   }
 
   private func canOpen(_ module: LabModule) -> Bool {
-    LabAccessPolicy.canOpen(module.access, state: accessState, variant: BuildVariant.current)
+    LabAccessPolicy.canOpen(module.access, state: accessState)
   }
 
   private var developerTool: DeveloperAreaTool {

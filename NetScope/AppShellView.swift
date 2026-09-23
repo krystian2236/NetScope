@@ -68,6 +68,7 @@ struct AppShellView: View {
   @StateObject private var knownDeviceStore: KnownDeviceStore
   @StateObject private var scanner: NetworkScanner
   @StateObject private var tools = NetworkToolsModel()
+  @StateObject private var entitlementStore: NetScopeEntitlementStore
   @SceneStorage("NetScope.selectedTab") private var selectedTabRaw = AppTab.dashboard.rawValue
   @SceneStorage("NetScope.ishWorkspaceRoute") private var ishWorkspaceRouteRaw = ""
   @State private var routeNotice: String?
@@ -76,6 +77,11 @@ struct AppShellView: View {
     let store = KnownDeviceStore()
     _knownDeviceStore = StateObject(wrappedValue: store)
     _scanner = StateObject(wrappedValue: NetworkScanner(knownDeviceStore: store))
+    _entitlementStore = StateObject(
+      wrappedValue: NetScopeEntitlementStore(
+        productIDs: NetScopeStoreProductIdentifiers.appConfiguration()
+      )
+    )
   }
 
   var body: some View {
@@ -102,6 +108,7 @@ struct AppShellView: View {
         .tabItem { Label("Toolbox", systemImage: "arrow.up.circle.fill") }.tag(AppTab.toolbox)
       if BuildVariant.current.includesDeveloperTools {
         LaboratoryView(
+          accessState: entitlementStore.accessState,
           onTryOwnNetwork: tryOwnNetwork,
           discoveredTargets: discoveredTargetsFromScanner
         )
@@ -117,7 +124,13 @@ struct AppShellView: View {
     } message: {
       Text(knownDeviceStore.errorMessage ?? "Nieznany błąd zapisu.")
     }
-    .task { scanner.refreshContext(); tools.refreshLocalContext() }
+    .task {
+      scanner.refreshContext()
+      tools.refreshLocalContext()
+      entitlementStore.startObservingTransactions()
+      await entitlementStore.loadProducts()
+      await entitlementStore.refresh()
+    }
   }
 
   private var selectedTab: Binding<AppTab> {

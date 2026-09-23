@@ -193,7 +193,7 @@ struct LaboratoryView: View {
   private var proMissions: [ProMissionPreview] {
     programs.flatMap { program in
       program.modules
-        .filter { !LabAccessPolicy.canOpen($0.access, state: accessState, variant: BuildVariant.current) }
+        .filter { !LabAccessPolicy.canOpen($0.access, state: accessState) }
         .flatMap { module in
           module.lessons.map { mission in
             ProMissionPreview(
