@@ -45,7 +45,7 @@ enum NucleiCatalog {
     reason: "Ta funkcja kontaktuje się z usługą zewnętrzną i może przekazać jej dane celu."
   )
   private static let secretRisk: ToolRiskLevel = .advanced(
-    reason: "Ta opcja używa danych uwierzytelniających. NetScope nie zapisuje wpisanej wartości."
+    reason: "Ta opcja używa danych uwierzytelniających. Northbyte Radar nie zapisuje wpisanej wartości."
   )
   private static let trafficRisk: ToolRiskLevel = .caution(
     reason: "Ta opcja może zwiększyć ruch, czas pracy albo obciążenie celu."

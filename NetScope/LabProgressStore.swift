@@ -25,6 +25,11 @@ final class LabProgressStore: ObservableObject {
     persist()
   }
 
+  func uncomplete(missionID: String, stepID: String) {
+    completed.remove(CompletedLabStep(missionID: missionID, stepID: stepID))
+    persist()
+  }
+
   func reset(missionID: String) {
     completed = completed.filter { $0.missionID != missionID }
     persist()
@@ -43,5 +48,15 @@ final class LabProgressStore: ObservableObject {
 
   func isComplete(missionID: String, stepID: String) -> Bool {
     completed.contains(CompletedLabStep(missionID: missionID, stepID: stepID))
+  }
+
+  func completedStepCount(in mission: LabMission) -> Int {
+    mission.steps.count {
+      isComplete(missionID: mission.id, stepID: $0.id)
+    }
+  }
+
+  func isComplete(_ mission: LabMission) -> Bool {
+    !mission.steps.isEmpty && completedStepCount(in: mission) == mission.steps.count
   }
 }

@@ -53,13 +53,13 @@ struct DashboardView: View {
           InfoBanner(
             icon: "lock.shield",
             title: "Skanowanie lokalne",
-            message: "NetScope sprawdza dostępność usług, bez logowania i wysyłania poleceń."
+            message: "Northbyte Radar sprawdza dostępność usług, bez logowania i wysyłania poleceń."
           )
         }
         .padding(12)
       }
       .background(Color(.systemGroupedBackground))
-      .navigationTitle("NetScope")
+      .navigationTitle("Northbyte Radar")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
@@ -74,8 +74,8 @@ struct DashboardView: View {
   }
 
   private var primaryScanAction: some View {
-    Button {
-      selectedTab = .scan
+    NavigationLink {
+      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
     } label: {
       HStack(spacing: 11) {
         Image(systemName: primaryActionIcon)
@@ -137,7 +137,7 @@ struct DashboardView: View {
 
       LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
         actionButton("Network", icon: "network", tab: .network)
-        actionButton("Scan", icon: "dot.radiowaves.left.and.right", tab: .scan)
+        scanActionButton
         actionButton("Diagnose", icon: "waveform.path.ecg", tab: .diagnose)
         actionButton("Lab", icon: "graduationcap.fill", tab: .laboratory)
       }
@@ -152,6 +152,20 @@ struct DashboardView: View {
       .buttonStyle(.bordered)
       .tint(.cyan)
     }
+  }
+
+  private var scanActionButton: some View {
+    NavigationLink {
+      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+    } label: {
+      Label("Scan", systemImage: "dot.radiowaves.left.and.right")
+        .font(.caption.weight(.semibold))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(11)
+        .background(.background, in: RoundedRectangle(cornerRadius: 13))
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.primary)
   }
 
   private func actionButton(_ title: String, icon: String, tab: AppTab) -> some View {
@@ -515,7 +529,7 @@ struct NetworkOverviewView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
 
-      ShareLink(item: networkSummary(context), subject: Text("NetScope — podsumowanie sieci")) {
+      ShareLink(item: networkSummary(context), subject: Text("Northbyte Radar — podsumowanie sieci")) {
         Label("Udostępnij podsumowanie", systemImage: "square.and.arrow.up")
           .font(.caption.weight(.semibold))
           .frame(maxWidth: .infinity)
@@ -537,7 +551,7 @@ struct NetworkOverviewView: View {
 
   private func networkSummary(_ context: NetworkContext) -> String {
     """
-    NetScope — podsumowanie sieci
+    Northbyte Radar — podsumowanie sieci
     IPv4: \(context.address)
     IPv6: \(context.ipv6Address ?? "niedostępny")
     Interfejs: \(context.interfaceName)

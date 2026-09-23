@@ -203,7 +203,7 @@ struct DiagnosticResultView: View {
       DetailRow(label: "Możliwa przyczyna", value: possibleCause)
       DetailRow(label: "Następny krok", value: nextStep)
 
-      ShareLink(item: reportText, subject: Text("NetScope — raport diagnostyczny")) {
+      ShareLink(item: reportText, subject: Text("Northbyte Radar — raport diagnostyczny")) {
         Label("Udostępnij bezpieczny raport", systemImage: "square.and.arrow.up")
           .font(.caption.weight(.semibold))
           .frame(maxWidth: .infinity)
@@ -222,7 +222,7 @@ struct DiagnosticResultView: View {
       ? "brak odpowiedzi"
       : result.resolvedAddresses.joined(separator: ", ")
     return """
-    NetScope — raport diagnostyczny
+    Northbyte Radar — raport diagnostyczny
     Cel: \(result.host)
     DNS: \(addresses)
     Port: \(result.portResult.port)

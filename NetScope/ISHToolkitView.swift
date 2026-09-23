@@ -14,7 +14,7 @@ struct NmapGuideView: View {
           InfoBanner(
             icon: "terminal.fill",
             title: "Nmap krok po kroku",
-            message: "Najpierw wykryj urządzenia w NetScope. Potem przechodź przez analizy po kolei; komendy pozostają ukryte, dopóki ich nie otworzysz."
+            message: "Najpierw wykryj urządzenia w Northbyte Radar. Potem przechodź przez analizy po kolei; komendy pozostają ukryte, dopóki ich nie otworzysz."
           )
 
           if scanner.devices.isEmpty {
@@ -254,9 +254,9 @@ struct ISHToolkitView: View {
   private var intro: some View {
     InfoBanner(
       icon: "terminal.fill",
-      title: "NetScope → iSH",
+      title: "Northbyte Radar → iSH",
       message:
-        "Przygotowuje polecenie Nmap i gotowy skrypt dla prywatnej sieci. NetScope niczego nie uruchamia automatycznie."
+        "Przygotowuje polecenie Nmap i gotowy skrypt dla prywatnej sieci. Northbyte Radar niczego nie uruchamia automatycznie."
     )
   }
 

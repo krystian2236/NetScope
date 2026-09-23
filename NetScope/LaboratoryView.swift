@@ -1,5 +1,33 @@
 import SwiftUI
 
+struct LabLearningLevel: Identifiable {
+  let id: String
+  let number: Int
+  let title: String
+  let section: LaboratorySectionID
+  let missions: [LabMission]
+
+  static func make(missions: [LabMission], programs: [LabProgram]) -> [Self] {
+    let foundation = Self(
+      id: "foundation",
+      number: 1,
+      title: "Podstawy",
+      section: .learning,
+      missions: missions
+    )
+    let toolLevels = programs.enumerated().map { index, program in
+      Self(
+        id: program.id.rawValue,
+        number: index + 2,
+        title: program.title,
+        section: .tool(program.id),
+        missions: program.modules.flatMap(\.lessons)
+      )
+    }
+    return ([foundation] + toolLevels).filter { !$0.missions.isEmpty }
+  }
+}
+
 struct LaboratoryView: View {
   let missions: [LabMission]
   let programs: [LabProgram]
@@ -8,6 +36,7 @@ struct LaboratoryView: View {
   @StateObject private var progressStore = LabProgressStore()
   @State private var confirmsResetAll = false
   @State private var selectedSection = LaboratorySectionID.learning
+  @State private var isLearningPathExpanded = false
 
   init(
     missions: [LabMission] = LabMission.demo,
@@ -60,55 +89,50 @@ struct LaboratoryView: View {
   }
 
   private var progressCard: some View {
-    let allSteps = missions.flatMap(\.steps)
-    let completedSteps = allSteps.filter { step in
-      missions.contains { mission in
-        progressStore.isComplete(missionID: mission.id, stepID: step.id)
-      }
-    }.count
-    let nextMission = missions.first { !missionIsComplete($0) }
+    let levels = LabLearningLevel.make(missions: missions, programs: programs)
+    let allSteps = levels.flatMap { $0.missions.flatMap(\.steps) }
+    let completedSteps = levels.reduce(0) { partialResult, level in
+      partialResult + completedStepCount(in: level)
+    }
+    let activeLevel = levels.first { level in
+      level.missions.contains { !missionIsComplete($0) }
+    }
 
     return VStack(alignment: .leading, spacing: 9) {
-      HStack {
-        Label("Postęp nauki", systemImage: "chart.bar.fill")
-          .font(.subheadline.weight(.semibold))
-        Spacer()
-        Text("\(completedSteps)/\(allSteps.count)")
-          .font(.caption.monospacedDigit().weight(.semibold))
-          .foregroundStyle(.cyan)
-      }
+      DisclosureGroup(isExpanded: $isLearningPathExpanded) {
+        VStack(alignment: .leading, spacing: 9) {
+          ProgressView(value: Double(completedSteps), total: Double(max(allSteps.count, 1)))
+            .tint(.cyan)
 
-      ProgressView(value: Double(completedSteps), total: Double(max(allSteps.count, 1)))
-        .tint(.cyan)
-
-      if let nextMission {
-        NavigationLink {
-          TerminalLessonView(
-            mission: nextMission,
-            progressStore: progressStore,
-            onTryOwnNetwork: onTryOwnNetwork
-          )
-        } label: {
-          HStack(spacing: 8) {
-            Image(systemName: "play.circle.fill")
-            VStack(alignment: .leading, spacing: 1) {
-              Text("Wznów naukę")
-                .font(.caption.weight(.semibold))
-              Text(nextMission.title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(.caption2.weight(.bold))
+          ForEach(levels) { level in
+            learningLevelRow(level)
           }
-          .foregroundStyle(.cyan)
+
+          if let activeLevel {
+            Button {
+              selectedSection = activeLevel.section
+            } label: {
+              Label("Otwórz poziom \(activeLevel.number): \(activeLevel.title)", systemImage: "play.circle.fill")
+                .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(.cyan)
+          } else {
+            Label("Wszystkie poziomy ukończone", systemImage: "checkmark.seal.fill")
+              .font(.caption.weight(.medium))
+              .foregroundStyle(.green)
+          }
         }
-        .buttonStyle(.plain)
-      } else {
-        Label("Wszystkie dostępne misje ukończone", systemImage: "checkmark.seal.fill")
-          .font(.caption.weight(.medium))
-          .foregroundStyle(.green)
+        .padding(.top, 8)
+      } label: {
+        HStack {
+          Label("Ścieżka nauki", systemImage: "chart.bar.fill")
+            .font(.subheadline.weight(.semibold))
+          Spacer()
+          Text("Łącznie \(completedSteps)/\(allSteps.count)")
+            .font(.caption.monospacedDigit().weight(.semibold))
+            .foregroundStyle(.cyan)
+        }
       }
     }
     .padding(12)
@@ -119,6 +143,27 @@ struct LaboratoryView: View {
     }
     .padding(.horizontal, 12)
     .padding(.top, 4)
+  }
+
+  private func learningLevelRow(_ level: LabLearningLevel) -> some View {
+    let completed = completedStepCount(in: level)
+    let total = level.missions.reduce(0) { $0 + $1.steps.count }
+    let isComplete = total > 0 && completed == total
+
+    return HStack(spacing: 8) {
+      Image(systemName: isComplete ? "checkmark.circle.fill" : "circle")
+        .foregroundStyle(isComplete ? .green : .secondary)
+      Text("Poziom \(level.number) · \(level.title)")
+        .font(.caption.weight(.medium))
+      Spacer()
+      Text("\(completed)/\(total)")
+        .font(.caption.monospacedDigit().weight(.semibold))
+        .foregroundStyle(isComplete ? .green : .secondary)
+    }
+  }
+
+  private func completedStepCount(in level: LabLearningLevel) -> Int {
+    level.missions.reduce(0) { $0 + progressStore.completedStepCount(in: $1) }
   }
 
   private var sectionPicker: some View {
@@ -140,28 +185,36 @@ struct LaboratoryView: View {
   private var sectionContent: some View {
     switch selectedSection {
     case .learning:
-      List(missions) { mission in
-        NavigationLink {
-          TerminalLessonView(
-            mission: mission,
-            progressStore: progressStore,
-            onTryOwnNetwork: onTryOwnNetwork
-          )
-        } label: {
-          HStack(spacing: 12) {
-            Image(systemName: missionIsComplete(mission) ? "checkmark.circle.fill" : "terminal")
-              .font(.title3)
-              .foregroundStyle(missionIsComplete(mission) ? .green : .cyan)
-              .frame(width: 36)
-            VStack(alignment: .leading, spacing: 3) {
-              Text(mission.title).font(.headline)
-              Text(mission.summary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+      if missions.isEmpty {
+        ContentUnavailableView(
+          "Brak misji",
+          systemImage: "tray",
+          description: Text("Misje Laboratory nie są jeszcze dostępne.")
+        )
+      } else {
+        List(missions) { mission in
+          NavigationLink {
+            TerminalLessonView(
+              mission: mission,
+              progressStore: progressStore,
+              onTryOwnNetwork: onTryOwnNetwork
+            )
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: missionIsComplete(mission) ? "checkmark.circle.fill" : "terminal")
+                .font(.title3)
+                .foregroundStyle(missionIsComplete(mission) ? .green : .cyan)
+                .frame(width: 36)
+              VStack(alignment: .leading, spacing: 3) {
+                Text(mission.title).font(.headline)
+                Text(mission.summary)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(2)
+              }
             }
+            .padding(.vertical, 4)
           }
-          .padding(.vertical, 4)
         }
       }
     case .tool(let toolID):
@@ -183,8 +236,6 @@ struct LaboratoryView: View {
   }
 
   private func missionIsComplete(_ mission: LabMission) -> Bool {
-    mission.steps.allSatisfy {
-      progressStore.isComplete(missionID: mission.id, stepID: $0.id)
-    }
+    progressStore.isComplete(mission)
   }
 }

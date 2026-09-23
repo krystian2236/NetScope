@@ -10,10 +10,11 @@ enum AppTab: Int, Hashable {
   case toolbox = 5
 
   static let navigationOrder: [AppTab] = [
-    .dashboard, .network, .scan, .diagnose, .laboratory,
+    .dashboard, .network, .diagnose, .laboratory,
   ]
 
   static func restored(from rawValue: Int) -> AppTab {
+    if rawValue == AppTab.scan.rawValue { return .dashboard }
     AppTab(rawValue: rawValue) ?? .dashboard
   }
 }
@@ -72,8 +73,6 @@ struct AppShellView: View {
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       NetworkOverviewView(scanner: scanner, tools: tools, knownDeviceStore: knownDeviceStore)
         .tabItem { Label("Network", systemImage: "network") }.tag(AppTab.network)
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
-        .tabItem { Label("Scan", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.scan)
       DiagnosticsView(model: tools)
         .tabItem { Label("Diagnose", systemImage: "waveform.path.ecg") }.tag(AppTab.diagnose)
       LaboratoryView(onTryOwnNetwork: {})
@@ -125,7 +124,12 @@ struct DevicesView: View {
           .padding(.horizontal, 12)
         List(filteredDevices) { device in
           NavigationLink {
-            DeviceDetailView(device: device, key: key(for: device), knownDeviceStore: knownDeviceStore)
+            DeviceDetailView(
+              device: device,
+              key: key(for: device),
+              scanner: scanner,
+              knownDeviceStore: knownDeviceStore
+            )
           } label: {
             DeviceRow(device: device, record: record(for: device), registryStatus: status(for: device))
           }
@@ -218,7 +222,7 @@ struct SecurityView: View {
           InfoBanner(
             icon: "lock.shield",
             title: "Ocena lokalna",
-            message: "Wskazania opisują wykryte usługi w prywatnej sieci. NetScope nie wysyła danych poza urządzenie."
+            message: "Wskazania opisują wykryte usługi w prywatnej sieci. Northbyte Radar nie wysyła danych poza urządzenie."
           )
         }
         .padding(12)
@@ -480,6 +484,17 @@ private struct SecurityPlaybookDetailView: View {
     .listStyle(.insetGrouped)
     .navigationTitle(playbook.title)
     .navigationBarTitleDisplayMode(.inline)
+    #if NETSCOPE_DEV
+    .safeAreaInset(edge: .top) {
+      HStack {
+        UIRefCopyButton(ref: .securityPlaybookDetail)
+        Spacer()
+      }
+      .padding(.horizontal, 12)
+      .padding(.top, 4)
+      .background(.bar)
+    }
+    #endif
   }
 }
 
@@ -575,6 +590,17 @@ private struct SecurityLabDetailView: View {
     .listStyle(.insetGrouped)
     .navigationTitle(lab.title)
     .navigationBarTitleDisplayMode(.inline)
+    #if NETSCOPE_DEV
+    .safeAreaInset(edge: .top) {
+      HStack {
+        UIRefCopyButton(ref: .securityLabDetail)
+        Spacer()
+      }
+      .padding(.horizontal, 12)
+      .padding(.top, 4)
+      .background(.bar)
+    }
+    #endif
   }
 }
 

@@ -14,7 +14,45 @@ struct LabStep: Identifiable, Equatable, Sendable {
 
   func accepts(command: String, result: VirtualCommandResult) -> Bool {
     let expectedStatus: VirtualCommandResult.Status = expectsFailure ? .invalid : .success
-    return result.status == expectedStatus && LabCommandIntent.parse(command) == acceptedIntent
+    return result.status == expectedStatus
+      && LabCommandIntent.parse(command)?.canonicalized == acceptedIntent.canonicalized
+  }
+
+  var learningObjective: String {
+    switch acceptedIntent {
+    case .discover(let cidr):
+      "Znajdź aktywne hosty w sieci \(cidr)."
+    case .inspect(let host, let ports, _):
+      "Rozpoznaj usługi na portach \(ports.map(String.init).joined(separator: ", ")) hosta \(host)."
+    case .nmapDiagnostic(let host):
+      "Sprawdź dostępne usługi hosta \(host)."
+    case .nuclei(let target, _):
+      "Sprawdź kontrolowany scenariusz konfiguracji dla \(target)."
+    case .dig(let name, let type, _, _):
+      type == "A" ? "Znajdź adres IPv4 hosta \(name)." : "Znajdź rekord \(type) hosta \(name)."
+    case .curl(_, let url, _, _, _, _, _):
+      "Sprawdź odpowiedź usługi WWW pod adresem \(url)."
+    case .connectSSH(let user, let host):
+      "Połącz użytkownika \(user) z hostem \(host) przez SSH."
+    }
+  }
+}
+
+enum TerminalLessonState: Equatable, Sendable {
+  case active
+  case hints
+  case solution
+  case completed(hasNextStep: Bool)
+
+  static func resolve(
+    isShowingCompletion: Bool,
+    hasNextStep: Bool,
+    revealedHintCount: Int,
+    isSolutionVisible: Bool
+  ) -> Self {
+    if isShowingCompletion { return .completed(hasNextStep: hasNextStep) }
+    if isSolutionVisible { return .solution }
+    return revealedHintCount > 0 ? .hints : .active
   }
 }
 
@@ -128,6 +166,45 @@ enum LabCommandIntent: Equatable, Sendable {
   case dig(name: String, type: String, server: String?, short: Bool)
   case curl(method: String, url: String, headers: [String], body: String?, head: Bool, follow: Bool, timeout: Int?)
   case connectSSH(user: String, host: String)
+
+  var canonicalized: Self {
+    switch self {
+    case .discover(let cidr):
+      .discover(cidr: cidr)
+    case .inspect(let host, let ports, let versions):
+      .inspect(host: host.lowercased(), ports: ports, versions: versions)
+    case .nmapDiagnostic(let host):
+      .nmapDiagnostic(host: host.lowercased())
+    case .nuclei(let target, let tags):
+      .nuclei(target: Self.canonicalURL(target), tags: tags.map { $0.lowercased() }.sorted())
+    case .dig(let name, let type, let server, let short):
+      .dig(
+        name: name.lowercased(),
+        type: type.uppercased(),
+        server: server?.lowercased(),
+        short: short
+      )
+    case .curl(let method, let url, let headers, let body, let head, let follow, let timeout):
+      .curl(
+        method: method.uppercased(),
+        url: Self.canonicalURL(url),
+        headers: headers,
+        body: body,
+        head: head,
+        follow: follow,
+        timeout: timeout
+      )
+    case .connectSSH(let user, let host):
+      .connectSSH(user: user, host: host.lowercased())
+    }
+  }
+
+  private static func canonicalURL(_ value: String) -> String {
+    guard var components = URLComponents(string: value) else { return value }
+    components.scheme = components.scheme?.lowercased()
+    components.host = components.host?.lowercased()
+    return components.string ?? value
+  }
 
   static func parse(_ command: String) -> LabCommandIntent? {
     let tokens = LabCommandTokenizer.tokenize(command)
@@ -250,7 +327,7 @@ enum LabCommandIntent: Equatable, Sendable {
       guard tokens.indices.contains(index + 1) else { return nil }
       let values = tokens[index + 1].split(separator: ",", omittingEmptySubsequences: false)
       ports = values.compactMap { UInt16($0) }
-      guard ports.count == values.count else { return nil }
+      guard ports.count == values.count, ports.allSatisfy({ $0 > 0 }) else { return nil }
     }
     return .inspect(host: host, ports: ports.sorted(), versions: versions)
   }
@@ -346,6 +423,15 @@ struct LabCommandPresentation: Equatable, Sendable {
         .init(category: .option, value: "-tags \(tags.joined(separator: ","))", explanation: "Ogranicza szablony do wybranej kategorii."),
       ]
     case .dig(let name, let type, let server, let short):
+      if type == "PTR", server == nil, !short {
+        command = "dig -x \(name)"
+        segments = [
+          .init(category: .tool, value: "dig", explanation: "Program do wykonywania zapytań DNS."),
+          .init(category: .option, value: "-x", explanation: "Wykonuje reverse DNS dla adresu IP."),
+          .init(category: .target, value: name, explanation: "Adres sprawdzany w lokalnej strefie demonstracyjnej."),
+        ]
+        return
+      }
       var parts = ["dig"]
       var commandSegments = [
         LabCommandSegment(category: .tool, value: "dig", explanation: "Program do wykonywania zapytań DNS."),

@@ -68,7 +68,7 @@ enum DigLabProgram {
           objective: "Użyj polecenia: \(command ?? presentation.command)",
           hints: ["Zacznij od dig.", "Dobierz nazwę, typ rekordu oraz opcjonalny serwer."],
           acceptedIntent: intent,
-          explanation: "Wynik pochodzi wyłącznie z deterministycznej strefy DNS NetScope.",
+          explanation: "Wynik pochodzi wyłącznie z deterministycznej strefy DNS Northbyte Radar.",
           expectsFailure: expectsFailure
         ),
       ]

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.1.2
+
+- połączono Start i Scan, dodano zwijaną Ścieżkę nauki oraz narzędzia deweloperskie w lekcjach,
+- dodano obsługę i zaliczenie polecenia `dig -x 192.168.50.20`,
+- zwiększono wersję aplikacji do 2.1.2 (build 10).
+
 ## 2.1.1
 
 - uporządkowano priorytet głównej akcji na ekranie Start,

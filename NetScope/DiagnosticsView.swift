@@ -1,9 +1,15 @@
 import SwiftUI
 
 struct DiagnosticsView: View {
+  private enum DiagnosticField: Hashable {
+    case host
+    case port
+  }
+
   @ObservedObject var model: NetworkToolsModel
   @State private var diagnosticHost = ""
   @State private var diagnosticPort = "443"
+  @FocusState private var focusedField: DiagnosticField?
 
   var body: some View {
     NavigationStack {
@@ -23,8 +29,17 @@ struct DiagnosticsView: View {
         .padding(12)
       }
       .background(Color(.systemGroupedBackground))
+      .scrollDismissesKeyboard(.interactively)
       .navigationTitle("Network Diagnostics")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          Button("Gotowe") {
+            focusedField = nil
+          }
+        }
+      }
       .task {
         model.refreshLocalContext()
       }
@@ -89,12 +104,20 @@ struct DiagnosticsView: View {
           .keyboardType(.URL)
           .textFieldStyle(.roundedBorder)
           .font(.subheadline)
+          .focused($focusedField, equals: .host)
+          .onSubmit {
+            focusedField = .port
+          }
 
         HStack {
           TextField("Port", text: $diagnosticPort)
             .keyboardType(.numberPad)
             .textFieldStyle(.roundedBorder)
             .font(.subheadline)
+            .focused($focusedField, equals: .port)
+            .onSubmit {
+              runDiagnostic()
+            }
 
           Button {
             runDiagnostic()
@@ -128,6 +151,7 @@ struct DiagnosticsView: View {
   }
 
   private func runDiagnostic() {
+    focusedField = nil
     Task {
       await model.diagnose(
         host: diagnosticHost,

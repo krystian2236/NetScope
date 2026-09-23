@@ -141,7 +141,7 @@ enum NmapCatalog {
     v("source-port", "evasion", ["-g", "--source-port"], "Port źródłowy", "Ustawia port źródłowy pakietów.", .integer(range: 0...65_535, example: "53"), 1250, evasion),
     v("proxies", "evasion", ["--proxies"], "Łańcuch proxy", "Przekazuje połączenia przez proxy HTTP lub SOCKS4.", .list(example: "http://127.0.0.1:8080"), 1260, evasion),
     v("data", "evasion", ["--data"], "Dane szesnastkowe", "Dodaje własny ładunek hex do pakietów.", .text(example: "DEADBEEF"), 1270, evasion),
-    v("data-string", "evasion", ["--data-string"], "Dane tekstowe", "Dodaje tekstowy ładunek do pakietów.", .text(example: "NetScope"), 1280, evasion),
+    v("data-string", "evasion", ["--data-string"], "Dane tekstowe", "Dodaje tekstowy ładunek do pakietów.", .text(example: "Northbyte Radar"), 1280, evasion),
     v("data-length", "evasion", ["--data-length"], "Losowe dane", "Dodaje wskazaną liczbę losowych bajtów.", .integer(range: 0...65_535, example: "16"), 1290, evasion),
     v("ip-options", "evasion", ["--ip-options"], "Opcje IP", "Dodaje wskazane opcje nagłówka IP.", .text(example: "R"), 1300, evasion),
     v("ttl", "evasion", ["--ttl"], "TTL", "Ustawia pole czasu życia pakietu IP.", .integer(range: 0...255, example: "64"), 1310, evasion),

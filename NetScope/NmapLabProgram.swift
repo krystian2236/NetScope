@@ -77,7 +77,7 @@ enum NmapLabProgram {
           objective: summary,
           hints: ["Zacznij od narzędzia nmap.", "Dobierz typ skanu, opcje i cel w sieci demonstracyjnej."],
           acceptedIntent: intent,
-          explanation: "Polecenie działa wyłącznie na deterministycznym modelu sieci NetScope."
+          explanation: "Polecenie działa wyłącznie na deterministycznym modelu sieci Northbyte Radar."
         )
       ]
     )

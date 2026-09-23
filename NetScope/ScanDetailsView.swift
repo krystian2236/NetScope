@@ -45,14 +45,14 @@ struct ScanDetailsView: View {
       subtitle: "Lokalne podsumowanie bez wysyłania do chmury"
     ) {
       VStack(spacing: 8) {
-        ShareLink(item: jsonExport(details), subject: Text("NetScope JSON")) {
+        ShareLink(item: jsonExport(details), subject: Text("Northbyte Radar JSON")) {
           Label("Udostępnij JSON", systemImage: "curlybraces")
             .font(.caption.weight(.semibold))
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
 
-        ShareLink(item: csvExport, subject: Text("NetScope CSV")) {
+        ShareLink(item: csvExport, subject: Text("Northbyte Radar CSV")) {
           Label("Udostępnij CSV", systemImage: "tablecells")
             .font(.caption.weight(.semibold))
             .frame(maxWidth: .infinity)
@@ -68,7 +68,7 @@ struct ScanDetailsView: View {
 
   private func jsonExport(_ details: ScanSessionDetails) -> String {
     let document = ScanExportDocument(
-      title: "NetScope Scan",
+      title: "Northbyte Radar Scan",
       createdAt: details.finishedAt ?? Date(),
       network: details.subnet,
       deviceAddresses: scanner.devices.map(\.address),

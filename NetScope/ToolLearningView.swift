@@ -284,7 +284,7 @@ struct ToolLearningView: View {
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
         .textFieldStyle(.roundedBorder)
-      Label("NetScope nie zapisuje tej wartości.", systemImage: "lock.fill")
+      Label("Northbyte Radar nie zapisuje tej wartości.", systemImage: "lock.fill")
         .font(.caption2)
         .foregroundStyle(.orange)
     case .integer(_, let example):

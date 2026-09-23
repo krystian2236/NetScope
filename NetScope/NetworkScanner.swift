@@ -53,7 +53,7 @@ final class NetworkScanner: ObservableObject {
       return
     }
     guard context.isPrivateOrLinkLocal else {
-      phase = .failed("Dla bezpieczeństwa NetScope skanuje tylko prywatne sieci lokalne.")
+      phase = .failed("Dla bezpieczeństwa Northbyte Radar skanuje tylko prywatne sieci lokalne.")
       return
     }
 

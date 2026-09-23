@@ -24,7 +24,7 @@ struct VirtualLabEngine: Sendable {
   func execute(_ input: String) -> VirtualCommandResult {
     let tokens = LabCommandTokenizer.tokenize(input)
     guard let executable = tokens.first else {
-      return invalid("Wpisz polecenie.", hint: "Dostępne: nmap, nuclei, ping, dig i ssh.")
+      return invalid("Wpisz polecenie.", hint: supportedCommandsHint)
     }
 
     let arguments = Array(tokens.dropFirst())
@@ -39,7 +39,7 @@ struct VirtualLabEngine: Sendable {
       VirtualCommandResult(
         status: .unsupported,
         output: "Laboratorium nie wykonuje tego polecenia.",
-        hint: "Dostępne: nmap, nuclei, ping, dig i ssh.",
+        hint: supportedCommandsHint,
         explanations: []
       )
     }
@@ -242,7 +242,7 @@ struct VirtualLabEngine: Sendable {
     if !head && !endpoint.body.isEmpty { rows.append("\n\(endpoint.body)") }
     return success(rows.joined(separator: "\n"), explanations: [
       .init(term: method, meaning: "Metoda żądania wykonywana wyłącznie w lokalnej symulacji."),
-      .init(term: "Cel", meaning: "\(host)\(endpoint.path) należy do wirtualnej sieci NetScope."),
+      .init(term: "Cel", meaning: "\(host)\(endpoint.path) należy do wirtualnej sieci Northbyte Radar."),
     ])
   }
 
@@ -253,8 +253,15 @@ struct VirtualLabEngine: Sendable {
   private func parsePorts(_ value: String) -> Set<UInt16>? {
     let parts = value.split(separator: ",", omittingEmptySubsequences: false)
     guard !parts.isEmpty else { return nil }
-    let ports = parts.compactMap { UInt16($0) }
+    let ports = parts.compactMap { part -> UInt16? in
+      guard let port = UInt16(part), port > 0 else { return nil }
+      return port
+    }
     return ports.count == parts.count ? Set(ports) : nil
+  }
+
+  private var supportedCommandsHint: String {
+    "Dostępne: nmap, nuclei, ping, dig, curl i ssh."
   }
 
   private func success(

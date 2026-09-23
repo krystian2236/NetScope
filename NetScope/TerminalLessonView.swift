@@ -12,10 +12,12 @@ struct TerminalLessonView: View {
   @ObservedObject var progressStore: LabProgressStore
   let onTryOwnNetwork: () -> Void
 
+  @Environment(\.dismiss) private var dismiss
   @State private var input = ""
   @State private var entries: [TerminalEntry] = []
   @State private var revealedHintCount = 0
-  @State private var copiedSolution = false
+  @State private var isSolutionVisible = false
+  @State private var completedStepID: String?
 
   private let engine = VirtualLabEngine(network: .demo)
 
@@ -25,7 +27,26 @@ struct TerminalLessonView: View {
     }
   }
 
-  private var isComplete: Bool { activeStep == nil }
+  private var completedStep: LabStep? {
+    if let completedStepID { return mission.steps.first { $0.id == completedStepID } }
+    return activeStep == nil ? mission.steps.last : nil
+  }
+
+  private var nextStep: LabStep? {
+    guard let completedStep, let index = mission.steps.firstIndex(of: completedStep) else { return nil }
+    return mission.steps.dropFirst(index + 1).first {
+      !progressStore.isComplete(missionID: mission.id, stepID: $0.id)
+    }
+  }
+
+  private var state: TerminalLessonState {
+    TerminalLessonState.resolve(
+      isShowingCompletion: completedStep != nil,
+      hasNextStep: nextStep != nil,
+      revealedHintCount: revealedHintCount,
+      isSolutionVisible: isSolutionVisible
+    )
+  }
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -34,32 +55,42 @@ struct TerminalLessonView: View {
           #if NETSCOPE_DEV
           HStack { UIRefCopyButton(ref: .labsMission); Spacer() }
           #endif
-          objectiveCard
-          history
-          prompt
-          developerSolution
-          hints
-          findingCard
-          completionCard
-          explanationCard
+          switch state {
+          case .completed:
+            if let completedStep {
+              completionState(for: completedStep)
+            }
+          case .active, .hints, .solution:
+            if let activeStep {
+              activeLessonState(for: activeStep)
+            }
+          }
         }
         .padding(16)
       }
       .background(Color(.systemGroupedBackground))
       .navigationTitle(mission.title)
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar(.hidden, for: .tabBar)
       .onChange(of: entries.count) {
         withAnimation { proxy.scrollTo("terminal-bottom", anchor: .bottom) }
       }
     }
   }
 
-  private var objectiveCard: some View {
+  @ViewBuilder
+  private func activeLessonState(for step: LabStep) -> some View {
+    objectiveCard(step)
+    terminal(for: step)
+    lessonHelp(for: step)
+  }
+
+  private func objectiveCard(_ step: LabStep) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      Label(isComplete ? "Lekcja ukończona" : "Cel lekcji", systemImage: isComplete ? "checkmark.seal.fill" : "target")
+      Label("Cel lekcji", systemImage: "target")
         .font(.headline)
-        .foregroundStyle(isComplete ? .green : .cyan)
-      Text(activeStep?.objective ?? mission.summary)
+        .foregroundStyle(.cyan)
+      Text(step.learningObjective)
         .font(.callout)
       Label("TEST DATA • wirtualna sieć \(VirtualNetwork.demo.cidr)", systemImage: "lock.shield")
         .font(.caption2.monospaced())
@@ -70,28 +101,11 @@ struct TerminalLessonView: View {
     .background(.background, in: RoundedRectangle(cornerRadius: 14))
   }
 
-  @ViewBuilder
-  private var history: some View {
-    if entries.isEmpty {
-      HStack(spacing: 8) {
-        Image(systemName: "terminal")
-        Text("Wpisz polecenie, aby rozpocząć.")
-      }
-      .font(.caption)
-      .foregroundStyle(.secondary)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 4)
-    } else {
-      VStack(alignment: .leading, spacing: 10) {
-        ForEach(entries.suffix(3)) { entry in
-          terminalEntry(entry)
-        }
-      }
-    }
-  }
-
-  private var prompt: some View {
+  private func terminal(for step: LabStep) -> some View {
     VStack(alignment: .leading, spacing: 10) {
+      Label("Terminal", systemImage: "terminal")
+        .font(.subheadline.weight(.semibold))
+      history
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text("krg $")
           .font(.caption.monospaced().weight(.semibold))
@@ -105,13 +119,27 @@ struct TerminalLessonView: View {
           .onSubmit(runCommand)
           .accessibilityLabel("Polecenie laboratorium")
       }
-
       Button(action: runCommand) {
         Label("Uruchom", systemImage: "play.fill")
           .frame(maxWidth: .infinity)
       }
       .buttonStyle(.borderedProminent)
       .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      #if NETSCOPE_DEV
+      HStack {
+        Button("Wstaw odpowiedź") {
+          input = LabCommandPresentation(intent: step.acceptedIntent).command
+          UIAccessibility.post(notification: .announcement, argument: "Odpowiedź deweloperska wstawiona do terminala")
+        }
+        Button("Kopiuj") {
+          UIPasteboard.general.string = LabCommandPresentation(intent: step.acceptedIntent).command
+          UIAccessibility.post(notification: .announcement, argument: "Odpowiedź deweloperska skopiowana")
+        }
+      }
+      .font(.caption.weight(.semibold))
+      .buttonStyle(.bordered)
+      .tint(.cyan)
+      #endif
     }
     .padding(12)
     .background(Color.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 13))
@@ -120,122 +148,94 @@ struct TerminalLessonView: View {
   }
 
   @ViewBuilder
-  private var developerSolution: some View {
-    if BuildVariant.current.includesDeveloperTools, let step = activeStep {
-      DisclosureGroup("Rozwiązanie Developer") {
-        solutionCard(
-          LabCommandPresentation(intent: step.acceptedIntent),
-          title: "Gotowe rozwiązanie",
-          allowsActions: true
-        )
+  private var history: some View {
+    if entries.isEmpty {
+      Text("Wpisz polecenie, aby rozpocząć.")
+        .font(.caption)
+        .foregroundStyle(.white.opacity(0.65))
+    } else {
+      ForEach(entries.suffix(2)) { entry in
+        terminalEntry(entry)
       }
-      .font(.caption.weight(.semibold))
-      .padding(12)
-      .background(.background, in: RoundedRectangle(cornerRadius: 12))
     }
   }
 
-  @ViewBuilder
-  private var hints: some View {
-    if let step = activeStep {
-      VStack(alignment: .leading, spacing: 9) {
-        Label("Podpowiedzi", systemImage: "lightbulb")
-          .font(.subheadline.weight(.semibold))
-        ForEach(Array(step.hints.prefix(revealedHintCount).enumerated()), id: \.offset) { index, hint in
-          Text("\(index + 1). \(hint)")
-            .font(.caption)
-        }
-        if revealedHintCount >= step.hints.count, !step.hints.isEmpty {
-          solutionCard(
-            LabCommandPresentation(intent: step.acceptedIntent),
-            title: "Sprawdź rozwiązanie",
-            allowsActions: false
-          )
-        }
-        Button(revealedHintCount < step.hints.count ? "Pokaż kolejną podpowiedź" : "Rozwiązanie jest widoczne") {
-          revealedHintCount = min(revealedHintCount + 1, step.hints.count)
-        }
-        .disabled(revealedHintCount >= step.hints.count)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(12)
-      .background(.background, in: RoundedRectangle(cornerRadius: 14))
-    }
-  }
-
-  @ViewBuilder
-  private var findingCard: some View {
-    if let completedStep = mission.steps.last(where: {
-      progressStore.isComplete(missionID: mission.id, stepID: $0.id)
-    }) {
-      let finding = completedStep.finding
-      VStack(alignment: .leading, spacing: 9) {
-        HStack {
-          Label("Finding", systemImage: "exclamationmark.shield.fill")
-            .font(.subheadline.weight(.semibold))
-          Spacer()
-          Text(finding.priority.title)
-            .font(.caption.bold())
-            .foregroundStyle(finding.priority == .high ? .red : finding.priority == .medium ? .orange : .green)
-        }
-        Text(finding.title).font(.callout.weight(.semibold))
-        Text(finding.what).font(.caption)
-        Text("Dlaczego to ważne: \(finding.whyItMatters)").font(.caption).foregroundStyle(.secondary)
-        Text("Możliwy wpływ: \(finding.impact)").font(.caption).foregroundStyle(.secondary)
-        Label(finding.recommendation, systemImage: "checklist")
-          .font(.caption)
-        Label(finding.recheck, systemImage: "arrow.triangle.2.circlepath")
-          .font(.caption)
-          .foregroundStyle(.cyan)
-        Button("Przygotuj ponowną kontrolę") {
-          input = LabCommandPresentation(intent: completedStep.acceptedIntent).command
-          UIAccessibility.post(notification: .announcement, argument: "Polecenie ponownej kontroli wstawione")
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(.cyan)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(12)
-      .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
-    }
-  }
-
-  @ViewBuilder
-  private var completionCard: some View {
-    if isComplete {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("Świetnie — cel został osiągnięty bez dotykania prawdziwej sieci.")
-          .font(.subheadline)
-        Button(action: onTryOwnNetwork) {
-          Label("Wypróbuj we własnej sieci", systemImage: "wifi")
+  private func lessonHelp(for step: LabStep) -> some View {
+    VStack(alignment: .leading, spacing: 9) {
+      if revealedHintCount == 0 {
+        Button("Potrzebuję podpowiedzi") {
+          revealedHintCount = min(1, step.hints.count)
         }
         .buttonStyle(.bordered)
-
-        Button(action: repeatMission) {
-          Label("Powtórz misję", systemImage: "arrow.counterclockwise")
+      } else {
+        Label("Podpowiedź \(revealedHintCount) z \(step.hints.count)", systemImage: "lightbulb")
+          .font(.subheadline.weight(.semibold))
+        ForEach(Array(step.hints.prefix(revealedHintCount).enumerated()), id: \.offset) { index, hint in
+          Text("\(index + 1). \(hint)").font(.caption)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.cyan)
+        if revealedHintCount < step.hints.count {
+          Button("Pokaż kolejną podpowiedź") { revealedHintCount += 1 }
+            .buttonStyle(.bordered)
+        } else if !isSolutionVisible {
+          Button("Pokaż rozwiązanie") { isSolutionVisible = true }
+            .buttonStyle(.bordered)
+        }
+        if isSolutionVisible {
+          solutionCard(LabCommandPresentation(intent: step.acceptedIntent), title: "Rozwiązanie")
+        }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(14)
-      .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(12)
+    .background(.background, in: RoundedRectangle(cornerRadius: 14))
   }
 
-  @ViewBuilder
-  private var explanationCard: some View {
-    if let entry = entries.last, !entry.result.explanations.isEmpty {
-      VStack(alignment: .leading, spacing: 5) {
-        Label("Jak czytać wynik", systemImage: "info.circle")
-          .font(.caption.weight(.semibold))
-        Text(entry.result.explanations.map { "\($0.term): \($0.meaning)" }.joined(separator: " • "))
-          .font(.caption2)
-          .foregroundStyle(.secondary)
+  private func completionState(for step: LabStep) -> some View {
+    let finding = step.finding
+    return VStack(alignment: .leading, spacing: 12) {
+      Label("Lekcja ukończona", systemImage: "checkmark.seal.fill")
+        .font(.headline)
+        .foregroundStyle(.green)
+      completionRow("Co wykryto", finding.title)
+      completionRow("Co to oznacza", finding.what)
+      completionRow("Dlaczego ma znaczenie", finding.whyItMatters)
+      completionRow("Co zrobić", finding.recommendation)
+      completionRow("Jak sprawdzić ponownie", finding.recheck)
+      Text("Priorytet w tej lekcji: \(finding.priority.title.lowercased())")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(finding.priority == .high ? .red : finding.priority == .medium ? .orange : .green)
+
+      if let entry = entries.last, !entry.result.explanations.isEmpty {
+        DisclosureGroup("Jak czytać wynik") {
+          Text(entry.result.explanations.map { "\($0.term): \($0.meaning)" }.joined(separator: "\n"))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.top, 4)
+        }
+        .font(.caption.weight(.semibold))
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(11)
-      .background(.background, in: RoundedRectangle(cornerRadius: 12))
+
+      Button(nextStep == nil ? "Zakończ lekcję" : "Następny krok", action: continueLesson)
+        .buttonStyle(.borderedProminent)
+        .tint(.cyan)
+
+      HStack {
+        Button("Sprawdź ponownie") { reopen(step) }
+        Button("Powtórz") { repeatMission() }
+        Button("Własna sieć", action: onTryOwnNetwork)
+      }
+      .buttonStyle(.bordered)
+      .font(.caption.weight(.semibold))
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(14)
+    .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+  }
+
+  private func completionRow(_ title: String, _ value: String) -> some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+      Text(value).font(.callout)
     }
   }
 
@@ -249,104 +249,82 @@ struct TerminalLessonView: View {
       if let hint = entry.result.hint {
         Label(hint, systemImage: "info.circle.fill")
           .font(.caption)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.white.opacity(0.75))
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(10)
-    .background(Color.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 11))
-    .foregroundStyle(.white)
+    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 11))
   }
 
   private func runCommand() {
     let command = input.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !command.isEmpty else { return }
+    guard !command.isEmpty, let step = activeStep else { return }
 
-    let step = activeStep
     let result = engine.execute(command)
     entries.append(TerminalEntry(command: LabCommandSanitizer.redactForHistory(command), result: result))
 
-    if let step, step.accepts(command: command, result: result) {
+    if step.accepts(command: command, result: result) {
       progressStore.complete(missionID: mission.id, stepID: step.id)
+      completedStepID = step.id
       input = ""
       revealedHintCount = 0
-      copiedSolution = false
+      isSolutionVisible = false
       UIAccessibility.post(notification: .announcement, argument: "Krok lekcji ukończony")
     }
   }
 
+  private func continueLesson() {
+    guard nextStep != nil else {
+      dismiss()
+      return
+    }
+    completedStepID = nil
+    input = ""
+    revealedHintCount = 0
+    isSolutionVisible = false
+  }
+
+  private func reopen(_ step: LabStep) {
+    progressStore.uncomplete(missionID: mission.id, stepID: step.id)
+    completedStepID = nil
+    input = LabCommandPresentation(intent: step.acceptedIntent).command
+    revealedHintCount = 0
+    isSolutionVisible = false
+  }
+
   private func repeatMission() {
     progressStore.reset(missionID: mission.id)
+    completedStepID = nil
     input = ""
     entries = []
     revealedHintCount = 0
-    copiedSolution = false
+    isSolutionVisible = false
     UIAccessibility.post(notification: .announcement, argument: "Misja rozpoczęta ponownie")
   }
 
-  private func solutionCard(
-    _ presentation: LabCommandPresentation,
-    title: String,
-    allowsActions: Bool
-  ) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
+  private func solutionCard(_ presentation: LabCommandPresentation, title: String) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
       Label(title, systemImage: "hammer.fill")
-        .font(.headline)
+        .font(.subheadline.weight(.semibold))
         .foregroundStyle(.purple)
-
       Text(presentation.command)
-        .font(.subheadline.monospaced())
+        .font(.caption.monospaced())
         .textSelection(.enabled)
-
-      if allowsActions {
-        HStack {
-          Button {
-            UIPasteboard.general.string = presentation.command
-            copiedSolution = true
-          } label: {
-            Label(copiedSolution ? "Skopiowano" : "Kopiuj", systemImage: copiedSolution ? "checkmark" : "doc.on.doc")
-          }
-          .buttonStyle(.bordered)
-
-          Button {
-            input = presentation.command
-            copiedSolution = false
-            UIAccessibility.post(notification: .announcement, argument: "Polecenie wstawione do terminala")
-          } label: {
-            Label("Wstaw do terminala", systemImage: "arrow.down.to.line")
-          }
-          .buttonStyle(.borderedProminent)
-          .tint(.cyan)
-        }
-        .font(.caption.weight(.semibold))
-      }
-
-      DisclosureGroup {
-        VStack(alignment: .leading, spacing: 10) {
+      DisclosureGroup("Budowa polecenia") {
+        VStack(alignment: .leading, spacing: 7) {
           ForEach(Array(presentation.segments.enumerated()), id: \.offset) { _, segment in
-            VStack(alignment: .leading, spacing: 3) {
-              HStack(spacing: 6) {
-                Label(segment.category.title, systemImage: segment.category.icon)
-                  .font(.caption.weight(.semibold))
-                  .foregroundStyle(.cyan)
-                Text(segment.value)
-                  .font(.caption.monospaced().bold())
-              }
-              Label(segment.explanation, systemImage: "info.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            Text("\(segment.value) — \(segment.explanation)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
           }
         }
-        .padding(.top, 6)
-      } label: {
-        Label("Budowa polecenia", systemImage: "square.split.2x1")
-          .font(.caption.weight(.semibold))
+        .padding(.top, 4)
       }
+      .font(.caption.weight(.semibold))
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(14)
-    .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+    .padding(11)
+    .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
   }
 
   private func color(for status: VirtualCommandResult.Status) -> Color {

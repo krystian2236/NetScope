@@ -39,7 +39,7 @@
 		<string>_workstation._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>NetScope skanuje wyłącznie Twoją lokalną sieć Wi‑Fi, aby wykryć urządzenia i udostępniane przez nie usługi.</string>
+	<string>Northbyte Radar skanuje wyłącznie Twoją lokalną sieć Wi‑Fi, aby wykryć urządzenia i udostępniane przez nie usługi.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

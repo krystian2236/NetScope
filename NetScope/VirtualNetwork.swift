@@ -38,7 +38,9 @@ struct VirtualNetwork: Equatable, Sendable {
   let httpEndpoints: [VirtualHTTPEndpoint]
 
   func host(at address: String) -> VirtualHost? {
-    hosts.first { $0.address == address || $0.hostname == address }
+    hosts.first {
+      $0.address == address || $0.hostname.caseInsensitiveCompare(address) == .orderedSame
+    }
   }
 
   func activeHosts(in cidr: String) -> [VirtualHost] {
@@ -54,7 +56,9 @@ struct VirtualNetwork: Equatable, Sendable {
 
   func endpoint(host: String, path: String, method: String) -> VirtualHTTPEndpoint? {
     httpEndpoints.first {
-      $0.host == host && $0.path == path && $0.method == method
+      $0.host.caseInsensitiveCompare(host) == .orderedSame
+        && $0.path == path
+        && $0.method.caseInsensitiveCompare(method) == .orderedSame
     }
   }
 
@@ -88,6 +92,14 @@ struct VirtualNetwork: Equatable, Sendable {
         ]
       ),
       VirtualHost(
+        address: "192.168.50.21",
+        hostname: "api.lab",
+        role: "API",
+        services: [
+          VirtualService(port: 80, transport: "tcp", name: "http", version: "Northbyte Radar Demo API"),
+        ]
+      ),
+      VirtualHost(
         address: "192.168.50.30",
         hostname: "printer.lab",
         role: "Drukarka",
@@ -104,7 +116,7 @@ struct VirtualNetwork: Equatable, Sendable {
       VirtualDNSRecord(name: "web.lab", type: "NS", value: "ns.lab."),
     ],
     httpEndpoints: [
-      VirtualHTTPEndpoint(host: "web.lab", path: "/", method: "GET", status: 200, body: "NetScope demo web", redirectPath: nil),
+      VirtualHTTPEndpoint(host: "web.lab", path: "/", method: "GET", status: 200, body: "Northbyte Radar demo web", redirectPath: nil),
       VirtualHTTPEndpoint(host: "web.lab", path: "/", method: "HEAD", status: 200, body: "", redirectPath: nil),
       VirtualHTTPEndpoint(host: "web.lab", path: "/start", method: "GET", status: 302, body: "", redirectPath: "/dashboard"),
       VirtualHTTPEndpoint(host: "web.lab", path: "/dashboard", method: "GET", status: 200, body: "dashboard", redirectPath: nil),

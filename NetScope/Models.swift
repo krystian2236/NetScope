@@ -987,6 +987,71 @@ enum PortCatalog {
     default: "Baza danych"
     }
   }
+
+  static func transport(for port: UInt16) -> String {
+    port == 53 ? "UDP" : "TCP"
+  }
+
+  static func userValue(for port: UInt16) -> String {
+    switch port {
+    case 22:
+      "Informuje, że router może udostępniać powłokę administracyjną; warto sprawdzić, czy dostęp jest ograniczony do LAN."
+    case 53:
+      "Potwierdza, że router może działać jako lokalny resolver DNS."
+    case 80, 8000, 8080, 8081, 8888:
+      "Może wskazywać na panel administracyjny WWW; sprawdź, czy jest dostępny tylko z zaufanej sieci."
+    case 443, 8443:
+      "Może wskazywać na szyfrowany panel administracyjny WWW."
+    default:
+      "Pomaga rozpoznać funkcję udostępnianą przez urządzenie i dobrać dalsze sprawdzenie."
+    }
+  }
+
+  static func routerUse(for port: UInt16) -> String? {
+    switch port {
+    case 22: "Zdalna administracja routerem."
+    case 53: "Lokalne rozwiązywanie nazw dla urządzeń w sieci."
+    case 80, 8000, 8080, 8081, 8888, 443, 8443: "Panel administracyjny routera przez WWW."
+    default: nil
+    }
+  }
+}
+
+struct RouterReadyCommand: Equatable, Sendable {
+  let title: String
+  let command: String
+}
+
+enum RouterReadyCommandBuilder {
+  static func commands(for device: NetworkDevice) -> [RouterReadyCommand] {
+    guard device.kind == .router else { return [] }
+    var result = [
+      RouterReadyCommand(title: "Sprawdź dostępność", command: "ping \(device.address)"),
+      RouterReadyCommand(title: "Sprawdź trasę", command: "traceroute \(device.address)"),
+      RouterReadyCommand(title: "Rozpoznaj usługi", command: "nmap -sV \(device.address)")
+    ]
+
+    for port in device.openPorts {
+      result.append(
+        RouterReadyCommand(title: "Sprawdź port \(port)", command: "nc -vz \(device.address) \(port)")
+      )
+    }
+    if device.openPorts.contains(53) {
+      result.append(
+        RouterReadyCommand(title: "Sprawdź DNS", command: "dig @\(device.address) example.com")
+      )
+    }
+    if device.openPorts.contains(22) {
+      result.append(RouterReadyCommand(title: "Połącz przez SSH", command: "ssh \(device.address)"))
+    }
+    for port in device.openPorts where [80, 8000, 8080, 8081, 8888, 443, 8443].contains(port) {
+      let scheme = [443, 8443].contains(port) ? "https" : "http"
+      result.append(
+        RouterReadyCommand(title: "Otwórz panel WWW", command: "\(scheme)://\(device.address)")
+      )
+    }
+    return result
+  }
 }
 
 enum BonjourCatalog {

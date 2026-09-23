@@ -4,6 +4,29 @@ import Testing
 
 @testable import NetScope
 
+@Suite("UIREF identifiers")
+struct UIRefTests {
+  @Test("Required identifiers are unique and present")
+  func requiredIdentifiersAreUniqueAndPresent() {
+    let required = [
+      "NETSCOPE.SECURITY.PLAYBOOK_DETAIL",
+      "NETSCOPE.SECURITY.LAB_DETAIL",
+      "NETSCOPE.LABS.PRO",
+      "NETSCOPE.TOOLBOX.REFERENCE.IP_CIDR",
+      "NETSCOPE.TOOLBOX.REFERENCE.PORTS_SERVICES",
+      "NETSCOPE.TOOLBOX.REFERENCE.HTTP_STATUS",
+      "NETSCOPE.LABS.PROGRAM.NMAP",
+      "NETSCOPE.LABS.PROGRAM.NUCLEI",
+      "NETSCOPE.LABS.PROGRAM.DIG",
+      "NETSCOPE.LABS.PROGRAM.CURL",
+    ]
+    let rawValues = UIRef.allCases.map(\.rawValue)
+
+    #expect(Set(rawValues).count == rawValues.count)
+    #expect(required.allSatisfy { rawValues.contains($0) })
+  }
+}
+
 @Suite("Session restoration")
 struct SessionRestorationTests {
   @Test("Unknown tab falls back to dashboard")
@@ -11,11 +34,11 @@ struct SessionRestorationTests {
     #expect(AppTab.restored(from: 999) == .dashboard)
   }
 
-  @Test("Primary navigation separates network workspaces")
-  func primaryNavigationSeparatesNetworkWorkspaces() {
-    #expect(AppTab.navigationOrder == [.dashboard, .network, .scan, .diagnose, .laboratory])
+  @Test("Primary navigation combines Start and Scan")
+  func primaryNavigationCombinesStartAndScan() {
+    #expect(AppTab.navigationOrder == [.dashboard, .network, .diagnose, .laboratory])
     #expect(AppTab.restored(from: 1) == .network)
-    #expect(AppTab.restored(from: 2) == .scan)
+    #expect(AppTab.restored(from: 2) == .dashboard)
     #expect(AppTab.restored(from: 3) == .diagnose)
     #expect(AppTab.restored(from: 4) == .laboratory)
   }
@@ -188,6 +211,34 @@ struct LaboratoryWorkflowTests {
 
     #expect(programs.map(\.id) == [.nmap, .nuclei, .dig, .curl])
     #expect(programs.allSatisfy { !$0.modules.isEmpty })
+  }
+
+  @Test("Laboratory progress separates foundations and tool levels")
+  func laboratoryProgressUsesSeparateLevels() {
+    let programs = [
+      NmapLabProgram.definition,
+      NucleiLabProgram.definition,
+      DigLabProgram.definition,
+      CurlLabProgram.definition,
+    ]
+    let levels = LabLearningLevel.make(missions: LabMission.demo, programs: programs)
+
+    #expect(levels.map(\.title) == ["Podstawy", "Nmap", "Nuclei", "Dig", "Curl"])
+    #expect(levels.map { $0.missions.count } == [6, 4, 1, 9, 8])
+  }
+
+  @Test("Reverse DNS presents and accepts the same command")
+  func reverseDNSUsesReverseLookupSyntax() {
+    let mission = DigLabProgram.definition.modules
+      .flatMap(\.lessons)
+      .first { $0.id == "dig-ptr" }!
+    let step = mission.steps[0]
+    let command = "dig -x 192.168.50.20"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(LabCommandPresentation(intent: step.acceptedIntent).command == command)
+    #expect(result.status == .success)
+    #expect(step.accepts(command: command, result: result))
   }
 
   @Test("Virtual network contains every HTTP endpoint host")

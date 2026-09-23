@@ -28,7 +28,17 @@ struct LabProgramView: View {
                   onTryOwnNetwork: onTryOwnNetwork
                 )
               } label: {
-                Label(mission.title, systemImage: "terminal")
+                HStack {
+                  Label(
+                    mission.title,
+                    systemImage: progressStore.isComplete(mission) ? "checkmark.circle.fill" : "terminal"
+                  )
+                  .foregroundStyle(progressStore.isComplete(mission) ? .green : .primary)
+                  Spacer()
+                  Text("\(progressStore.completedStepCount(in: mission))/\(mission.steps.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                }
               }
             }
 
@@ -63,14 +73,44 @@ struct LabProgramView: View {
           Text(module.summary)
         }
       }
+
+      if program.modules.isEmpty {
+        ContentUnavailableView(
+          "Brak modułów",
+          systemImage: "tray",
+          description: Text("Program nie zawiera jeszcze żadnych lekcji.")
+        )
+      }
     }
+    #if NETSCOPE_DEV
+    .safeAreaInset(edge: .top) {
+      HStack {
+        UIRefCopyButton(ref: programUIRef)
+        Spacer()
+      }
+      .padding(.horizontal, 12)
+      .padding(.top, 4)
+      .background(.bar)
+    }
+    #endif
     .sheet(isPresented: $showsProInformation) {
       NavigationStack {
         ContentUnavailableView(
-          "NetScope Pro",
+          "Northbyte Radar Pro",
           systemImage: "graduationcap.fill",
           description: Text("Pełne programy narzędziowe będą dostępne jako jednorazowe odblokowanie. Ten ekran nie rozpoczyna zakupu.")
         )
+        #if NETSCOPE_DEV
+        .safeAreaInset(edge: .top) {
+          HStack {
+            UIRefCopyButton(ref: .labsPro)
+            Spacer()
+          }
+          .padding(.horizontal, 12)
+          .padding(.top, 4)
+          .background(.bar)
+        }
+        #endif
         .toolbar {
           ToolbarItem(placement: .confirmationAction) {
             Button("Gotowe") { showsProInformation = false }
@@ -84,4 +124,15 @@ struct LabProgramView: View {
   private func canOpen(_ module: LabModule) -> Bool {
     LabAccessPolicy.canOpen(module.access, state: accessState, variant: BuildVariant.current)
   }
+
+  #if NETSCOPE_DEV
+  private var programUIRef: UIRef {
+    switch program.id {
+    case .nmap: .labsProgramNmap
+    case .nuclei: .labsProgramNuclei
+    case .dig: .labsProgramDig
+    case .curl: .labsProgramCurl
+    }
+  }
+  #endif
 }
