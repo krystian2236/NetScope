@@ -37,6 +37,7 @@ build_bundle() {
     -sdk iphoneos \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$derived_data" \
+    CONFIGURATION_BUILD_DIR="$derived_data/Build/Products/Release-iphoneos" \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     "$@" \
@@ -75,7 +76,8 @@ assert_plist_value() {
 }
 
 assert_plist_value CFBundleIdentifier pl.krystian.NetScope
-assert_plist_value CFBundleShortVersionString 2.1.1
+expected_marketing_version="$(rg -o -m1 'MARKETING_VERSION = [^;]+' "$repo_root/NetScope.xcodeproj/project.pbxproj" | sed 's/.* = //')"
+assert_plist_value CFBundleShortVersionString "$expected_marketing_version"
 assert_plist_value ITSAppUsesNonExemptEncryption false
 
 local_network_description="$(

@@ -3,19 +3,19 @@ import SwiftUI
 enum AppTab: Int, Hashable {
   case dashboard = 0
   case network = 1
+  // Retained so previously persisted tab values can still be interpreted.
   case scan = 2
   case diagnose = 3
   case laboratory = 4
-  // Toolbox is opened from Start and is kept out of the primary tab bar.
   case toolbox = 5
 
   static let navigationOrder: [AppTab] = [
-    .dashboard, .network, .diagnose, .laboratory,
+    .dashboard, .network, .toolbox, .diagnose, .laboratory,
   ]
 
   static func restored(from rawValue: Int) -> AppTab {
     if rawValue == AppTab.scan.rawValue { return .dashboard }
-    AppTab(rawValue: rawValue) ?? .dashboard
+    return AppTab(rawValue: rawValue) ?? .dashboard
   }
 }
 
@@ -73,6 +73,8 @@ struct AppShellView: View {
         .tabItem { Label("Start", systemImage: "dot.radiowaves.left.and.right") }.tag(AppTab.dashboard)
       NetworkOverviewView(scanner: scanner, tools: tools, knownDeviceStore: knownDeviceStore)
         .tabItem { Label("Network", systemImage: "network") }.tag(AppTab.network)
+      ToolboxView(scanner: scanner, workspaceRouteRaw: $ishWorkspaceRouteRaw)
+        .tabItem { Label("Toolbox", systemImage: "wrench.and.screwdriver") }.tag(AppTab.toolbox)
       DiagnosticsView(model: tools)
         .tabItem { Label("Diagnose", systemImage: "waveform.path.ecg") }.tag(AppTab.diagnose)
       LaboratoryView(onTryOwnNetwork: {})

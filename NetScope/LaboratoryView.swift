@@ -99,7 +99,29 @@ struct LaboratoryView: View {
     }
 
     return VStack(alignment: .leading, spacing: 9) {
-      DisclosureGroup(isExpanded: $isLearningPathExpanded) {
+      Button {
+        withAnimation(.easeInOut(duration: 0.2)) {
+          isLearningPathExpanded.toggle()
+        }
+      } label: {
+        HStack {
+          Label("Ścieżka nauki", systemImage: "chart.bar.fill")
+            .font(.subheadline.weight(.semibold))
+          Spacer()
+          Text("Łącznie \(completedSteps)/\(allSteps.count)")
+            .font(.caption.monospacedDigit().weight(.semibold))
+            .foregroundStyle(.cyan)
+          Image(systemName: isLearningPathExpanded ? "chevron.up" : "chevron.down")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+        }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityValue(isLearningPathExpanded ? "Rozwinięta" : "Zwinięta")
+      .accessibilityHint(isLearningPathExpanded ? "Zwiń listę poziomów" : "Rozwiń listę poziomów")
+
+      if isLearningPathExpanded {
         VStack(alignment: .leading, spacing: 9) {
           ProgressView(value: Double(completedSteps), total: Double(max(allSteps.count, 1)))
             .tint(.cyan)
@@ -124,15 +146,6 @@ struct LaboratoryView: View {
           }
         }
         .padding(.top, 8)
-      } label: {
-        HStack {
-          Label("Ścieżka nauki", systemImage: "chart.bar.fill")
-            .font(.subheadline.weight(.semibold))
-          Spacer()
-          Text("Łącznie \(completedSteps)/\(allSteps.count)")
-            .font(.caption.monospacedDigit().weight(.semibold))
-            .foregroundStyle(.cyan)
-        }
       }
     }
     .padding(12)

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- dodano Toolbox jako piątą zakładkę nawigacji,
+- przeniesiono podsumowanie skanu do Network i dodano bezpieczny przycisk skanowania sieci lokalnej,
+- usunięto powielone podsumowanie i szczegóły zakończonego skanu z widoku Skan,
+- zwiększono wersję aplikacji do 2.1.2 (build 11).
+
 ## 2.1.2
 
 - połączono Start i Scan, dodano zwijaną Ścieżkę nauki oraz narzędzia deweloperskie w lekcjach,

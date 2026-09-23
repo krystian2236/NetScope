@@ -4,7 +4,6 @@ struct ScannerView: View {
   @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @ObservedObject var tools: NetworkToolsModel
-  @State private var completionAcknowledged = false
 
   var body: some View {
     NavigationStack {
@@ -30,28 +29,6 @@ struct ScannerView: View {
             onCancel: scanner.cancel
           )
           ScanStatusView(phase: scanner.phase, deviceCount: scanner.devices.count)
-          if case .finished = scanner.phase, !completionAcknowledged {
-            ScanCompletionSummaryView(
-              scanner: scanner,
-              onDone: { completionAcknowledged = true }
-            )
-          }
-          if scanner.sessionDetails != nil {
-            NavigationLink {
-              ScanDetailsView(scanner: scanner)
-            } label: {
-              HStack {
-                Label("Szczegóły przebiegu", systemImage: "chart.bar.doc.horizontal")
-                  .font(.caption.weight(.semibold))
-                Spacer()
-                Image(systemName: "chevron.right")
-                  .font(.caption2.weight(.bold))
-              }
-              .padding(10)
-              .background(.background, in: RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
-          }
           if !scanner.devices.isEmpty {
             DeviceSummaryStrip(devices: scanner.devices)
           } else if !scanner.phase.isScanning {
@@ -68,89 +45,13 @@ struct ScannerView: View {
       .background(Color(.systemGroupedBackground))
       .navigationTitle("Skan sieci")
       .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct ScanCompletionSummaryView: View {
-  @ObservedObject var scanner: NetworkScanner
-  let onDone: () -> Void
-
-  private var services: [String] {
-    Array(Set(scanner.devices.flatMap(\.openPorts))).sorted().map { PortCatalog.name(for: $0) }
-  }
-
-  var body: some View {
-    ToolCard(
-      icon: "checkmark.circle.fill",
-      title: "Analiza zakończona",
-      subtitle: "Northbyte Radar zebrał wyniki lokalnego skanu"
-    ) {
-      VStack(alignment: .leading, spacing: 9) {
-        if let details = scanner.sessionDetails {
-          Text("Znaleziono \(details.detectedDevices) urządzeń. Sprawdzono \(details.completedProbes) prób portów. Wykryto \(details.openPorts) dostępnych usług\(services.isEmpty ? "." : ": \(services.joined(separator: " oraz ")).")")
-            .font(.caption)
-        }
-        Text("Co z tego wynika? Wynik pokazuje usługi, na które odpowiedziały urządzenia w prywatnej sieci. Każdą usługę możesz otworzyć osobno, aby zobaczyć jej znaczenie i dalsze bezpieczne kroki.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-
-        NavigationLink("Zobacz wykryte usługi") {
-          ScanDetectedServicesView(scanner: scanner)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(.cyan)
-
-        NavigationLink("Zobacz szczegóły skanu") {
-          ScanDetailsView(scanner: scanner)
-        }
-        .buttonStyle(.bordered)
-
-        Button("Gotowe", action: onDone)
-          .buttonStyle(.bordered)
-          .frame(maxWidth: .infinity)
-      }
-    }
   }
 }
 
 private func startScan() {
-    completionAcknowledged = false
     Task { await scanner.scan() }
   }
 
-}
-
-private struct ScanDetectedServicesView: View {
-  @ObservedObject var scanner: NetworkScanner
-
-  private var devicesWithServices: [NetworkDevice] {
-    scanner.devices.filter { !$0.openPorts.isEmpty }
-  }
-
-  var body: some View {
-    List {
-      if devicesWithServices.isEmpty {
-        ContentUnavailableView(
-          "Brak wykrytych usług",
-          systemImage: "checkmark.circle",
-          description: Text("Ostatni skan nie wykrył usług odpowiadających na sprawdzanych portach.")
-        )
-      } else {
-        ForEach(devicesWithServices) { device in
-          Section(device.primaryName + " • " + device.address) {
-            ForEach(device.openPorts, id: \.self) { port in
-              LabeledContent(
-                "\(PortCatalog.name(for: port)) \(port)/\(PortCatalog.transport(for: port))",
-                value: PortCatalog.info(for: port).isEncrypted ? "Szyfrowane" : "Brak gwarancji szyfrowania"
-              )
-            }
-          }
-        }
-      }
-    }
-    .navigationTitle("Wykryte usługi")
-    .navigationBarTitleDisplayMode(.inline)
-  }
 }
 
 private struct StartDestinations: View {

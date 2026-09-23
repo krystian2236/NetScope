@@ -480,23 +480,29 @@ struct NetworkOverviewView: View {
           if let context = scanner.context ?? tools.localContext {
             overviewCard(context)
           } else {
-            ContentUnavailableView(
-              "Brak aktywnego interfejsu",
-              systemImage: "wifi.slash",
-              description: Text("Połącz urządzenie z siecią Wi‑Fi i odśwież ekran.")
-            )
-            .frame(minHeight: 180)
+            VStack(spacing: 12) {
+              networkScanButton
+              ContentUnavailableView(
+                "Brak aktywnego interfejsu",
+                systemImage: "wifi.slash",
+                description: Text("Połącz urządzenie z siecią Wi‑Fi i odśwież ekran.")
+              )
+              .frame(minHeight: 150)
+            }
           }
 
-          NavigationLink {
-            ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
-          } label: {
-            Label("Przejdź do skanu sieci", systemImage: "dot.radiowaves.left.and.right")
-              .font(.subheadline.weight(.semibold))
-              .frame(maxWidth: .infinity)
+          if let details = scanner.sessionDetails {
+            scanAnalysisCard(details)
+          } else if let summary = scanner.history.first {
+            scanHistoryCard(summary)
+          } else {
+            ContentUnavailableView(
+              "Brak skanu sieci",
+              systemImage: "dot.radiowaves.left.and.right",
+              description: Text("Po wykonaniu skanu jego wynik i ograniczenia pojawią się tutaj.")
+            )
+            .frame(minHeight: 150)
           }
-          .buttonStyle(.borderedProminent)
-          .tint(.cyan)
         }
         .padding(12)
       }
@@ -513,32 +519,20 @@ struct NetworkOverviewView: View {
   private func overviewCard(_ context: NetworkContext) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
-        Label("Network Status", systemImage: "network")
+        Label("Monitor sieci lokalnej", systemImage: "network")
           .font(.headline)
         Spacer()
-        StatusPill(title: "Connected", tint: .green)
+        networkScanButton
       }
 
-      AddressRow(label: "Local IPv4", value: context.address)
+      AddressRow(label: "Lokalny IPv4", value: context.address)
       AddressRow(label: "IPv6", value: context.ipv6Address ?? "Niedostępny")
-      AddressRow(label: "Interface", value: context.interfaceName)
-      AddressRow(label: "Subnet", value: context.scanRangeDescription)
-      AddressRow(label: "Netmask", value: context.netmask)
+      AddressRow(label: "Interfejs", value: context.interfaceName)
+      AddressRow(label: "Zakres sieci", value: context.scanRangeDescription)
+      AddressRow(label: "Maska", value: context.netmask)
 
       Text("Dane pochodzą z aktywnego interfejsu urządzenia. Brakujące informacje nie są uzupełniane sztucznie.")
         .font(.caption)
-        .foregroundStyle(.secondary)
-
-      ShareLink(item: networkSummary(context), subject: Text("Northbyte Radar — podsumowanie sieci")) {
-        Label("Udostępnij podsumowanie", systemImage: "square.and.arrow.up")
-          .font(.caption.weight(.semibold))
-          .frame(maxWidth: .infinity)
-      }
-      .buttonStyle(.bordered)
-      .tint(.cyan)
-
-      Text("Podsumowanie zawiera lokalny adres, interfejs i zakres sieci. Udostępniaj je tylko zaufanym osobom.")
-        .font(.caption2)
         .foregroundStyle(.secondary)
     }
     .padding(14)
@@ -549,15 +543,152 @@ struct NetworkOverviewView: View {
     }
   }
 
-  private func networkSummary(_ context: NetworkContext) -> String {
-    """
-    Northbyte Radar — podsumowanie sieci
-    IPv4: \(context.address)
-    IPv6: \(context.ipv6Address ?? "niedostępny")
-    Interfejs: \(context.interfaceName)
-    Zakres: \(context.scanRangeDescription)
-    Maska: \(context.netmask)
-    """
+  private var networkScanButton: some View {
+    Button(action: startNetworkScan) {
+      Label("Skanuj sieć", systemImage: "dot.radiowaves.left.and.right")
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .foregroundStyle(.white)
+        .background(Color.green.opacity(canStartNetworkScan ? 1 : 0.45), in: Capsule())
+    }
+    .buttonStyle(.plain)
+    .disabled(!canStartNetworkScan)
+    .accessibilityHint(
+      scanner.phase.isScanning
+        ? "Skan sieci już trwa."
+        : "Dostępny tylko w prywatnej lub lokalnej sieci."
+    )
+  }
+
+  private var canStartNetworkScan: Bool {
+    guard !scanner.phase.isScanning,
+      let context = scanner.context ?? tools.localContext
+    else {
+      return false
+    }
+    return context.isPrivateOrLinkLocal
+  }
+
+  private func startNetworkScan() {
+    guard canStartNetworkScan else { return }
+    Task { await scanner.scan() }
+  }
+
+  private func scanHistoryCard(_ summary: ScanSummary) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Label("Ostatni skan", systemImage: "clock.arrow.circlepath")
+          .font(.headline)
+        Spacer()
+        Text(summary.startedAt.formatted(date: .abbreviated, time: .shortened))
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+
+      HStack(alignment: .top, spacing: 8) {
+        scanMetric(summary.deviceCount.formatted(), label: "Urządzenia")
+        scanMetric(summary.openPortCount.formatted(), label: "Otwarte porty")
+        scanMetric(summary.attentionCount.formatted(), label: "Wymagają uwagi")
+      }
+
+      AddressRow(label: "Profil", value: summary.profile.title)
+      AddressRow(label: "Sprawdzany zakres", value: summary.subnet ?? "Nie zapisano")
+      AddressRow(label: "Czas trwania", value: "\(Int(summary.duration.rounded())) s")
+
+      Divider()
+
+      Text("Wynik obejmuje hosty i porty sprawdzone przez wybrany profil w pokazanym zakresie. Zapora, brak uprawnień lub brak odpowiedzi mogą ukryć aktywne urządzenia i usługi. Brak wykryć nie potwierdza ich nieobecności ani bezpieczeństwa sieci.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(14)
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    .overlay {
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+    }
+  }
+
+  private func scanAnalysisCard(_ details: ScanSessionDetails) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Label("Analiza skanu", systemImage: "checkmark.circle.fill")
+          .font(.headline)
+        Spacer()
+        Text(scanStatusTitle)
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(scanner.phase.isScanning ? .cyan : .secondary)
+      }
+
+      HStack(alignment: .top, spacing: 8) {
+        scanMetric(details.detectedDevices.formatted(), label: "Urządzenia")
+        scanMetric(details.completedProbes.formatted(), label: "Próby")
+        scanMetric(details.openPorts.formatted(), label: "Otwarte porty")
+      }
+
+      AddressRow(label: "Profil", value: details.profile.title)
+      AddressRow(label: "Sprawdzany zakres", value: details.subnet)
+      AddressRow(label: "Rozpoczęto", value: details.startedAt.formatted(date: .abbreviated, time: .shortened))
+
+      Divider()
+
+      VStack(alignment: .leading, spacing: 5) {
+        Text("Jak czytać wynik")
+          .font(.subheadline.weight(.semibold))
+        Text(scanInterpretation(for: details))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(14)
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    .overlay {
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+    }
+  }
+
+  private var scanStatusTitle: String {
+    switch scanner.phase {
+    case .idle, .finished: "Zakończony"
+    case .preparing: "Przygotowanie"
+    case .scanning: "W toku"
+    case .cancelled: "Przerwany"
+    case .failed: "Nieukończony"
+    }
+  }
+
+  private func scanMetric(_ value: String, label: String) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(value)
+        .font(.title3.weight(.semibold).monospacedDigit())
+      Text(label)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private func scanInterpretation(for details: ScanSessionDetails) -> String {
+    switch scanner.phase {
+    case .preparing:
+      "Skan jest przygotowywany. Wyniki nie są jeszcze kompletne."
+    case .scanning(let completed, let total):
+      "Skan trwa: sprawdzono \(completed) z \(total) hostów. Wyniki są częściowe i mogą się zmienić."
+    case .cancelled:
+      "Skan został przerwany. Dane obejmują tylko zakończone próby; brak odpowiedzi nie potwierdza, że host lub usługa nie istnieje."
+    case .failed(let message):
+      "Skan nie zakończył się poprawnie: \(message) Zebrane dane mogą być niepełne."
+    case .idle, .finished:
+      if details.openPorts == 0 {
+        "Nie wykryto otwartych portów. Skan sprawdza adresy w zakresie /24 i porty wybranego profilu; zapory, uprawnienia lub brak odpowiedzi mogą ukryć aktywne hosty i usługi. Brak wykryć nie dowodzi ich nieobecności ani bezpieczeństwa sieci."
+      } else {
+        "Wykryte porty odpowiedziały podczas skanu. Sprawdzono adresy w zakresie /24 i porty wybranego profilu; zapory lub brak odpowiedzi mogą ukryć inne hosty i usługi. Wynik sam w sobie nie potwierdza podatności ani pełnego bezpieczeństwa urządzeń."
+      }
+    }
   }
 }
 
