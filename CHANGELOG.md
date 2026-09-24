@@ -3,9 +3,9 @@
 ## Unreleased
 
 - dodano Toolbox jako piątą zakładkę nawigacji,
-- przeniesiono podsumowanie skanu do Network i dodano bezpieczny przycisk skanowania sieci lokalnej,
-- usunięto powielone podsumowanie i szczegóły zakończonego skanu z widoku Skan,
-- zwiększono wersję aplikacji do 2.1.2 (build 11).
+- dodano kartę „Ostatnia aktywność” z bieżącym stanem i czasem ostatniego skanu,
+- dodano w Network przyciski „Skanuj sieć” i „Sprawdź port”,
+- zwiększono wersję aplikacji do 2.1.2 (build 12).
 
 ## 2.1.2
 

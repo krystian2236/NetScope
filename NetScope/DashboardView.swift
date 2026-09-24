@@ -481,7 +481,7 @@ struct NetworkOverviewView: View {
             overviewCard(context)
           } else {
             VStack(spacing: 12) {
-              networkScanButton
+              networkActions
               ContentUnavailableView(
                 "Brak aktywnego interfejsu",
                 systemImage: "wifi.slash",
@@ -491,18 +491,7 @@ struct NetworkOverviewView: View {
             }
           }
 
-          if let details = scanner.sessionDetails {
-            scanAnalysisCard(details)
-          } else if let summary = scanner.history.first {
-            scanHistoryCard(summary)
-          } else {
-            ContentUnavailableView(
-              "Brak skanu sieci",
-              systemImage: "dot.radiowaves.left.and.right",
-              description: Text("Po wykonaniu skanu jego wynik i ograniczenia pojawią się tutaj.")
-            )
-            .frame(minHeight: 150)
-          }
+          lastActivityCard
         }
         .padding(12)
       }
@@ -522,7 +511,6 @@ struct NetworkOverviewView: View {
         Label("Monitor sieci lokalnej", systemImage: "network")
           .font(.headline)
         Spacer()
-        networkScanButton
       }
 
       AddressRow(label: "Lokalny IPv4", value: context.address)
@@ -534,6 +522,8 @@ struct NetworkOverviewView: View {
       Text("Dane pochodzą z aktywnego interfejsu urządzenia. Brakujące informacje nie są uzupełniane sztucznie.")
         .font(.caption)
         .foregroundStyle(.secondary)
+
+      networkActions
     }
     .padding(14)
     .background(.background, in: RoundedRectangle(cornerRadius: 16))
@@ -543,22 +533,99 @@ struct NetworkOverviewView: View {
     }
   }
 
-  private var networkScanButton: some View {
-    Button(action: startNetworkScan) {
-      Label("Skanuj sieć", systemImage: "dot.radiowaves.left.and.right")
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .foregroundStyle(.white)
-        .background(Color.green.opacity(canStartNetworkScan ? 1 : 0.45), in: Capsule())
+  private var networkActions: some View {
+    HStack(spacing: 10) {
+      NavigationLink {
+        PortScannerView(model: tools)
+      } label: {
+        Label("Sprawdź port", systemImage: "shield.lefthalf.filled")
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.borderedProminent)
+      .tint(.cyan)
+
+      Button(action: startNetworkScan) {
+        Label("Skanuj sieć", systemImage: "dot.radiowaves.left.and.right")
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.borderedProminent)
+      .tint(.cyan)
+      .disabled(!canStartNetworkScan)
+      .accessibilityHint(
+        scanner.phase.isScanning
+          ? "Skan sieci już trwa."
+          : "Dostępny tylko w prywatnej lub lokalnej sieci."
+      )
     }
-    .buttonStyle(.plain)
-    .disabled(!canStartNetworkScan)
-    .accessibilityHint(
-      scanner.phase.isScanning
-        ? "Skan sieci już trwa."
-        : "Dostępny tylko w prywatnej lub lokalnej sieci."
-    )
+    .font(.caption.weight(.semibold))
+  }
+
+  private var lastActivityCard: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Label("Ostatnia aktywność", systemImage: "clock.arrow.circlepath")
+          .font(.headline)
+        Spacer()
+        StatusPill(title: activityState.title, tint: activityState.tint)
+      }
+
+      if let timestamp = activityTimestamp {
+        AddressRow(
+          label: scanner.phase.isScanning ? "Rozpoczęto" : "Ostatni skan",
+          value: timestamp.formatted(date: .abbreviated, time: .shortened)
+        )
+      } else {
+        AddressRow(label: "Ostatni skan", value: "Jeszcze nie wykonano")
+      }
+
+      Text(activityMessage)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(14)
+    .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    .overlay {
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+    }
+  }
+
+  private var activityState: (title: String, tint: Color) {
+    switch scanner.phase {
+    case .preparing, .scanning:
+      ("Skanowanie…", .cyan)
+    case .failed, .cancelled:
+      ("Nie udało się", .orange)
+    case .idle, .finished:
+      ("Gotowy", .green)
+    }
+  }
+
+  private var activityTimestamp: Date? {
+    switch scanner.phase {
+    case .preparing, .scanning:
+      scanner.sessionDetails?.startedAt
+    case .idle, .finished, .cancelled, .failed:
+      scanner.history.first?.finishedAt ?? scanner.sessionDetails?.startedAt
+    }
+  }
+
+  private var activityMessage: String {
+    switch scanner.phase {
+    case .preparing:
+      "Przygotowuję skan sieci lokalnej."
+    case .scanning(let completed, let total):
+      "Skanowanie trwa: sprawdzono \(completed) z \(total) hostów."
+    case .failed(let message):
+      "Skan nie zakończył się: \(message)"
+    case .cancelled:
+      "Skan został przerwany przed zakończeniem."
+    case .idle where scanner.history.isEmpty:
+      "Nie wykonano jeszcze skanu. Wybierz „Skanuj sieć”, aby rozpocząć."
+    case .idle, .finished:
+      "Skan jest gotowy do ponownego uruchomienia."
+    }
   }
 
   private var canStartNetworkScan: Bool {
@@ -573,122 +640,6 @@ struct NetworkOverviewView: View {
   private func startNetworkScan() {
     guard canStartNetworkScan else { return }
     Task { await scanner.scan() }
-  }
-
-  private func scanHistoryCard(_ summary: ScanSummary) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Label("Ostatni skan", systemImage: "clock.arrow.circlepath")
-          .font(.headline)
-        Spacer()
-        Text(summary.startedAt.formatted(date: .abbreviated, time: .shortened))
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-
-      HStack(alignment: .top, spacing: 8) {
-        scanMetric(summary.deviceCount.formatted(), label: "Urządzenia")
-        scanMetric(summary.openPortCount.formatted(), label: "Otwarte porty")
-        scanMetric(summary.attentionCount.formatted(), label: "Wymagają uwagi")
-      }
-
-      AddressRow(label: "Profil", value: summary.profile.title)
-      AddressRow(label: "Sprawdzany zakres", value: summary.subnet ?? "Nie zapisano")
-      AddressRow(label: "Czas trwania", value: "\(Int(summary.duration.rounded())) s")
-
-      Divider()
-
-      Text("Wynik obejmuje hosty i porty sprawdzone przez wybrany profil w pokazanym zakresie. Zapora, brak uprawnień lub brak odpowiedzi mogą ukryć aktywne urządzenia i usługi. Brak wykryć nie potwierdza ich nieobecności ani bezpieczeństwa sieci.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .padding(14)
-    .background(.background, in: RoundedRectangle(cornerRadius: 16))
-    .overlay {
-      RoundedRectangle(cornerRadius: 16)
-        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
-    }
-  }
-
-  private func scanAnalysisCard(_ details: ScanSessionDetails) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Label("Analiza skanu", systemImage: "checkmark.circle.fill")
-          .font(.headline)
-        Spacer()
-        Text(scanStatusTitle)
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(scanner.phase.isScanning ? .cyan : .secondary)
-      }
-
-      HStack(alignment: .top, spacing: 8) {
-        scanMetric(details.detectedDevices.formatted(), label: "Urządzenia")
-        scanMetric(details.completedProbes.formatted(), label: "Próby")
-        scanMetric(details.openPorts.formatted(), label: "Otwarte porty")
-      }
-
-      AddressRow(label: "Profil", value: details.profile.title)
-      AddressRow(label: "Sprawdzany zakres", value: details.subnet)
-      AddressRow(label: "Rozpoczęto", value: details.startedAt.formatted(date: .abbreviated, time: .shortened))
-
-      Divider()
-
-      VStack(alignment: .leading, spacing: 5) {
-        Text("Jak czytać wynik")
-          .font(.subheadline.weight(.semibold))
-        Text(scanInterpretation(for: details))
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-    }
-    .padding(14)
-    .background(.background, in: RoundedRectangle(cornerRadius: 16))
-    .overlay {
-      RoundedRectangle(cornerRadius: 16)
-        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
-    }
-  }
-
-  private var scanStatusTitle: String {
-    switch scanner.phase {
-    case .idle, .finished: "Zakończony"
-    case .preparing: "Przygotowanie"
-    case .scanning: "W toku"
-    case .cancelled: "Przerwany"
-    case .failed: "Nieukończony"
-    }
-  }
-
-  private func scanMetric(_ value: String, label: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(value)
-        .font(.title3.weight(.semibold).monospacedDigit())
-      Text(label)
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
-
-  private func scanInterpretation(for details: ScanSessionDetails) -> String {
-    switch scanner.phase {
-    case .preparing:
-      "Skan jest przygotowywany. Wyniki nie są jeszcze kompletne."
-    case .scanning(let completed, let total):
-      "Skan trwa: sprawdzono \(completed) z \(total) hostów. Wyniki są częściowe i mogą się zmienić."
-    case .cancelled:
-      "Skan został przerwany. Dane obejmują tylko zakończone próby; brak odpowiedzi nie potwierdza, że host lub usługa nie istnieje."
-    case .failed(let message):
-      "Skan nie zakończył się poprawnie: \(message) Zebrane dane mogą być niepełne."
-    case .idle, .finished:
-      if details.openPorts == 0 {
-        "Nie wykryto otwartych portów. Skan sprawdza adresy w zakresie /24 i porty wybranego profilu; zapory, uprawnienia lub brak odpowiedzi mogą ukryć aktywne hosty i usługi. Brak wykryć nie dowodzi ich nieobecności ani bezpieczeństwa sieci."
-      } else {
-        "Wykryte porty odpowiedziały podczas skanu. Sprawdzono adresy w zakresie /24 i porty wybranego profilu; zapory lub brak odpowiedzi mogą ukryć inne hosty i usługi. Wynik sam w sobie nie potwierdza podatności ani pełnego bezpieczeństwa urządzeń."
-      }
-    }
   }
 }
 

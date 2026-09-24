@@ -34,13 +34,14 @@ struct SessionRestorationTests {
     #expect(AppTab.restored(from: 999) == .dashboard)
   }
 
-  @Test("Primary navigation combines Start and Scan")
-  func primaryNavigationCombinesStartAndScan() {
-    #expect(AppTab.navigationOrder == [.dashboard, .network, .diagnose, .laboratory])
+  @Test("Primary navigation includes Toolbox")
+  func primaryNavigationIncludesToolbox() {
+    #expect(AppTab.navigationOrder == [.dashboard, .network, .toolbox, .diagnose, .laboratory])
     #expect(AppTab.restored(from: 1) == .network)
     #expect(AppTab.restored(from: 2) == .dashboard)
     #expect(AppTab.restored(from: 3) == .diagnose)
     #expect(AppTab.restored(from: 4) == .laboratory)
+    #expect(AppTab.restored(from: 5) == .toolbox)
   }
 
   @Test("Security findings consume NET results without low-noise duplicates")
