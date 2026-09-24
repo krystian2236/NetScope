@@ -32,11 +32,12 @@ grep -q 'tool: NucleiCatalog.definition' "$repo_root/NetScope/ToolboxView.swift"
 build_bundle() {
   xcodebuild \
     -project "$repo_root/NetScope.xcodeproj" \
-    -scheme NetScope \
+    -scheme 'NetScope App Store' \
     -configuration Release \
     -sdk iphoneos \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$derived_data" \
+    CONFIGURATION_BUILD_DIR="$derived_data/Build/Products/Release-iphoneos" \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     "$@" \
@@ -75,7 +76,8 @@ assert_plist_value() {
 }
 
 assert_plist_value CFBundleIdentifier pl.krystian.NetScope
-assert_plist_value CFBundleShortVersionString 1.3
+expected_marketing_version="$(rg -o -m1 'MARKETING_VERSION = [^;]+' "$repo_root/NetScope.xcodeproj/project.pbxproj" | sed 's/.* = //')"
+assert_plist_value CFBundleShortVersionString "$expected_marketing_version"
 assert_plist_value ITSAppUsesNonExemptEncryption false
 
 local_network_description="$(

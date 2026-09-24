@@ -1,7 +1,31 @@
+import Foundation
 import XCTest
 import Testing
 
 @testable import NetScope
+
+@Suite("UIREF identifiers")
+struct UIRefTests {
+  @Test("Required identifiers are unique and present")
+  func requiredIdentifiersAreUniqueAndPresent() {
+    let required = [
+      "NETSCOPE.SECURITY.PLAYBOOK_DETAIL",
+      "NETSCOPE.SECURITY.LAB_DETAIL",
+      "NETSCOPE.LABS.PRO",
+      "NETSCOPE.TOOLBOX.REFERENCE.IP_CIDR",
+      "NETSCOPE.TOOLBOX.REFERENCE.PORTS_SERVICES",
+      "NETSCOPE.TOOLBOX.REFERENCE.HTTP_STATUS",
+      "NETSCOPE.LABS.PROGRAM.NMAP",
+      "NETSCOPE.LABS.PROGRAM.NUCLEI",
+      "NETSCOPE.LABS.PROGRAM.DIG",
+      "NETSCOPE.LABS.PROGRAM.CURL",
+    ]
+    let rawValues = UIRef.allCases.map(\.rawValue)
+
+    #expect(Set(rawValues).count == rawValues.count)
+    #expect(required.allSatisfy { rawValues.contains($0) })
+  }
+}
 
 @Suite("Session restoration")
 struct SessionRestorationTests {
@@ -10,12 +34,59 @@ struct SessionRestorationTests {
     #expect(AppTab.restored(from: 999) == .dashboard)
   }
 
-  @Test("Primary navigation keeps Toolbox in the center")
-  func primaryNavigationKeepsToolboxInTheCenter() {
-    #expect(AppTab.navigationOrder == [.dashboard, .toolbox, .comingSoon])
-    #expect(AppTab.restored(from: 1) == .dashboard)
+  @Test("Primary navigation includes Toolbox")
+  func primaryNavigationIncludesToolbox() {
+    #expect(AppTab.navigationOrder == [.dashboard, .network, .toolbox, .diagnose, .laboratory])
+    #expect(AppTab.restored(from: 1) == .network)
     #expect(AppTab.restored(from: 2) == .dashboard)
-    #expect(AppTab.restored(from: 4) == .dashboard)
+    #expect(AppTab.restored(from: 3) == .diagnose)
+    #expect(AppTab.restored(from: 4) == .laboratory)
+    #expect(AppTab.restored(from: 5) == .toolbox)
+  }
+
+  @Test("Security findings consume NET results without low-noise duplicates")
+  func securityFindingsConsumeNetworkResults() {
+    let device = NetworkDevice(
+      address: "192.168.1.20",
+      hostname: "demo",
+      openPorts: [23],
+      lastSeen: Date()
+    )
+
+    let findings = SecurityFinding.fromNetworkDevices([device])
+
+    #expect(findings.count == 1)
+    #expect(findings.first?.severity == .high)
+    #expect(findings.first?.evidence.contains("ostatni wynik NET") == true)
+  }
+
+  @Test("Hardening catalog stays local and actionable")
+  func hardeningCatalogHasAllCategories() {
+    #expect(Set(HardeningCheck.catalog.map(\.category)) == Set(HardeningCategory.allCases))
+    #expect(HardeningCheck.catalog.allSatisfy { !$0.guidance.isEmpty && !$0.rationale.isEmpty })
+  }
+
+  @Test("Secrets inspector reports line numbers and masks values")
+  func secretsInspectorMasksValues() {
+    let findings = SecretsInspector.scan("API_KEY=super-secret\nAuthorization: Bearer abc123")
+
+    #expect(findings.count == 2)
+    #expect(findings.map(\.lineNumber) == [1, 2])
+    #expect(findings.allSatisfy { $0.maskedValue == "••••••" })
+  }
+
+  @Test("Security playbooks use bounded six-step procedures")
+  func securityPlaybooksAreComplete() {
+    #expect(SecurityPlaybook.catalog.count == 5)
+    #expect(SecurityPlaybook.catalog.allSatisfy { $0.steps.count == 6 })
+    #expect(SecurityPlaybook.catalog.allSatisfy { $0.steps.map(\.id) == Array(1...6) })
+  }
+
+  @Test("Security labs use only local fictional scenarios")
+  func securityLabsAreBounded() {
+    #expect(SecurityLab.catalog.count == 3)
+    #expect(SecurityLab.catalog.allSatisfy { !$0.evidence.isEmpty && !$0.expectedOutcome.isEmpty })
+    #expect(SecurityLab.catalog.flatMap(\.evidence).allSatisfy { !$0.contains("nmap") && !$0.contains("dig") && !$0.contains("curl") })
   }
 
   @Test("Shortcut route restores the selected command")
@@ -25,11 +96,298 @@ struct SessionRestorationTests {
   }
 }
 
+@Suite("TCP probe cancellation")
+struct TCPProbeCancellationTests {
+  @Test("Cancelling a TCP probe completes promptly")
+  func cancellingTCPProbeCompletesPromptly() async {
+    let task = Task {
+      await TCPPortProbe.check(
+        host: "192.0.2.1",
+        port: 65_000,
+        timeout: 10
+      )
+    }
+
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    let cancellationStartedAt = Date()
+    task.cancel()
+    let result = await task.value
+
+    #expect(result.status == .closed)
+    #expect(Date().timeIntervalSince(cancellationStartedAt) < 1)
+  }
+}
+
+@Suite("Laboratory command sanitization")
+struct LaboratoryCommandSanitizationTests {
+  @Test("Authorization values are fully redacted for every scheme")
+  func authorizationValuesAreFullyRedacted() {
+    let cases = [
+      ("Bearer", "bearer-secret"),
+      ("Basic", "basic-secret"),
+      ("Digest", "digest-secret"),
+      ("CustomScheme", "custom-secret"),
+    ]
+
+    for (scheme, secret) in cases {
+      let history = LabCommandSanitizer.redactForHistory(
+        "curl -H 'Authorization: \(scheme) \(secret)' https://web.lab"
+      )
+
+      #expect(history.contains("Authorization: [REDACTED]"))
+      #expect(!history.contains(secret))
+    }
+  }
+
+  @Test("Non-secret Curl arguments remain unchanged")
+  func nonSecretCurlArgumentsRemainUnchanged() {
+    let command = "curl -X POST -H 'Accept: application/json' https://web.lab/path"
+
+    #expect(LabCommandSanitizer.redactForHistory(command) == command)
+  }
+
+  @Test("Existing Nuclei secret redaction remains unchanged")
+  func existingNucleiSecretRedactionRemainsUnchanged() {
+    let history = LabCommandSanitizer.redactForHistory(
+      "nuclei -itoken nuclei-secret -u https://web.lab"
+    )
+
+    #expect(history == "nuclei -itoken [REDACTED] -u https://web.lab")
+    #expect(!history.contains("nuclei-secret"))
+  }
+}
+
 @Suite("Toolbox workflow")
 struct ToolboxWorkflowTests {
   @Test("Toolbox exposes Nmap and Nuclei")
   func toolboxExposesBothLearningTools() {
     #expect(ToolboxEntry.allCases == [.reconnaissance, .nuclei])
+  }
+
+  @Test("Free access stays local and bounded")
+  func freeAccessHasNoProFeatures() {
+    let access = NetScopeAccessController(level: .free)
+    #expect(access.allows(.quickScan))
+    #expect(access.allows(.basicDiagnostics))
+    #expect(!access.allows(.customPorts))
+    #expect(!access.allows(.compareScans))
+  }
+}
+
+@Suite("NetScope 2.1 laboratory workflow")
+struct LaboratoryWorkflowTests {
+  @Test("Demo contains the required deterministic scenarios")
+  func demoContainsRequiredScenarios() {
+    let ids = Set(LabMission.demo.map(\.id))
+
+    #expect(ids.contains("host-discovery"))
+    #expect(ids.contains("ssh-basics"))
+    #expect(ids.contains("dns-basics"))
+    #expect(ids.contains("plain-http"))
+    #expect(ids.contains("unusual-port"))
+    #expect(LabMission.demo.count >= 5)
+  }
+
+  @Test("Virtual HTTP result produces a finding and recommendation")
+  func virtualHTTPProducesFinding() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let result = VirtualLabEngine(network: .demo).execute("curl http://web.lab")
+
+    #expect(result.status == .success)
+    #expect(step.accepts(command: "curl http://web.lab", result: result))
+    #expect(step.finding.priority == .high)
+    #expect(step.finding.recommendation.contains("HTTPS"))
+    #expect(!step.finding.recheck.isEmpty)
+  }
+
+  @Test("Laboratory exposes Curl and Dig programs")
+  func laboratoryExposesCurlAndDig() {
+    let programs = [
+      NmapLabProgram.definition,
+      NucleiLabProgram.definition,
+      DigLabProgram.definition,
+      CurlLabProgram.definition,
+    ]
+
+    #expect(programs.map(\.id) == [.nmap, .nuclei, .dig, .curl])
+    #expect(programs.allSatisfy { !$0.modules.isEmpty })
+  }
+
+  @Test("Laboratory progress separates foundations and tool levels")
+  func laboratoryProgressUsesSeparateLevels() {
+    let programs = [
+      NmapLabProgram.definition,
+      NucleiLabProgram.definition,
+      DigLabProgram.definition,
+      CurlLabProgram.definition,
+    ]
+    let levels = LabLearningLevel.make(missions: LabMission.demo, programs: programs)
+
+    #expect(levels.map(\.title) == ["Podstawy", "Nmap", "Nuclei", "Dig", "Curl"])
+    #expect(levels.map { $0.missions.count } == [6, 4, 1, 9, 8])
+  }
+
+  @Test("Reverse DNS presents and accepts the same command")
+  func reverseDNSUsesReverseLookupSyntax() {
+    let mission = DigLabProgram.definition.modules
+      .flatMap(\.lessons)
+      .first { $0.id == "dig-ptr" }!
+    let step = mission.steps[0]
+    let command = "dig -x 192.168.50.20"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(LabCommandPresentation(intent: step.acceptedIntent).command == command)
+    #expect(result.status == .success)
+    #expect(step.accepts(command: command, result: result))
+  }
+
+  @Test("Virtual network contains every HTTP endpoint host")
+  func virtualNetworkContainsHTTPEndpointHosts() {
+    let network = VirtualNetwork.demo
+
+    #expect(network.httpEndpoints.allSatisfy { network.host(at: $0.host) != nil })
+    #expect(network.host(at: "API.LAB")?.address == "192.168.50.21")
+  }
+
+  @Test("Engine rejects port zero and explains supported commands")
+  func engineHandlesInvalidAndUnsupportedCommands() {
+    let engine = VirtualLabEngine(network: .demo)
+    let invalidPort = engine.execute("nmap -sT -p 0 web.lab")
+    let unsupported = engine.execute("whoami")
+
+    #expect(invalidPort.status == .invalid)
+    #expect(LabCommandIntent.parse("nmap -sT -p 0 web.lab") == nil)
+    #expect(unsupported.status == .unsupported)
+    #expect(unsupported.hint?.contains("curl") == true)
+  }
+
+  @Test("Curl handles API endpoints and case-insensitive host names")
+  func curlUsesConsistentVirtualNetwork() {
+    let engine = VirtualLabEngine(network: .demo)
+
+    #expect(engine.execute("curl -X POST http://api.lab/devices").status == .success)
+    #expect(engine.execute("curl http://WEB.LAB").status == .success)
+    #expect(engine.execute("curl http://missing.lab").status == .invalid)
+  }
+
+  @Test("Case-insensitive host spelling completes the matching mission")
+  func caseInsensitiveHostSpellingCompletesMission() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let command = "curl http://WEB.LAB"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(result.status == .success)
+    #expect(step.accepts(command: command, result: result))
+  }
+}
+
+@Suite("Terminal lesson states")
+struct TerminalLessonStateTests {
+  @Test("Aktywna lekcja nie pokazuje ukończenia")
+  func activeLessonDoesNotShowCompletion() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .active
+    )
+  }
+
+  @Test("Podpowiedzi i rozwiązanie są ujawniane świadomie")
+  func hintsGateSolution() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 1,
+        isSolutionVisible: false
+      ) == .hints
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 3,
+        isSolutionVisible: false
+      ) == .hints
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: false,
+        hasNextStep: true,
+        revealedHintCount: 3,
+        isSolutionVisible: true
+      ) == .solution
+    )
+  }
+
+  @Test("Ukończenie rozróżnia następny krok i finał misji")
+  func completionChoosesNextStepOrFinalCTA() {
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: true,
+        hasNextStep: true,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .completed(hasNextStep: true)
+    )
+    #expect(
+      TerminalLessonState.resolve(
+        isShowingCompletion: true,
+        hasNextStep: false,
+        revealedHintCount: 0,
+        isSolutionVisible: false
+      ) == .completed(hasNextStep: false)
+    )
+  }
+
+  @Test("Cel lekcji nie ujawnia gotowej komendy")
+  func learningObjectiveDoesNotExposeCommand() {
+    let step = LabMission.demo.first { $0.id == "dns-basics" }!.steps[0]
+
+    #expect(step.learningObjective == "Znajdź adres IPv4 hosta web.lab.")
+    #expect(!step.learningObjective.localizedCaseInsensitiveContains("dig"))
+  }
+
+  @Test("Poprawna komenda kończy krok, a historia redaguje sekret")
+  func acceptedCommandAndHistoryRedaction() {
+    let mission = LabMission.demo.first { $0.id == "plain-http" }!
+    let step = mission.steps[0]
+    let command = "curl http://web.lab"
+    let result = VirtualLabEngine(network: .demo).execute(command)
+
+    #expect(step.accepts(command: command, result: result))
+    #expect(
+      LabCommandSanitizer.redactForHistory(
+        "curl -H 'Authorization: Bearer secret' http://web.lab"
+      ).contains("[REDACTED]")
+    )
+  }
+
+  @Test("Reset przywraca początkowy stan postępu")
+  @MainActor
+  func resetRestoresInitialProgress() {
+    let suiteName = "NetScopeTests.TerminalLesson.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let mission = LabMission.demo.first { $0.id == "dns-basics" }!
+    let step = mission.steps[0]
+    let store = LabProgressStore(defaults: defaults)
+    store.complete(missionID: mission.id, stepID: step.id)
+    #expect(store.isComplete(missionID: mission.id, stepID: step.id))
+
+    store.uncomplete(missionID: mission.id, stepID: step.id)
+    #expect(!store.isComplete(missionID: mission.id, stepID: step.id))
+
+    store.complete(missionID: mission.id, stepID: step.id)
+    store.reset(missionID: mission.id)
+    #expect(store.completedStepCount(in: mission) == 0)
   }
 }
 
@@ -361,6 +719,51 @@ final class NetScopeTests: XCTestCase {
     XCTAssertTrue(PortCatalog.info(for: 443).isEncrypted)
     XCTAssertFalse(PortCatalog.info(for: 23).isEncrypted)
     XCTAssertEqual(PortCatalog.info(for: 5432).category, "Baza danych")
+  }
+
+  func testRouterServicesAndCommandsFollowDetectedPorts() {
+    let router = NetworkDevice(
+      address: "192.168.1.1",
+      hostname: "router.local",
+      openPorts: [22, 53],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(router.openPorts.count, 2)
+    let commands = RouterReadyCommandBuilder.commands(for: router).map(\.command)
+    XCTAssertTrue(commands.contains("ssh 192.168.1.1"))
+    XCTAssertTrue(commands.contains("dig @192.168.1.1 example.com"))
+    XCTAssertTrue(commands.contains("nc -vz 192.168.1.1 22"))
+    XCTAssertFalse(commands.contains("http://192.168.1.1"))
+  }
+
+  func testRouterShowsAllDetectedServices() {
+    let router = NetworkDevice(
+      address: "192.168.1.1",
+      hostname: nil,
+      openPorts: [22, 53, 80, 443, 8080],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(router.openPorts.count, 5)
+    XCTAssertEqual(
+      router.openPorts.map { PortCatalog.transport(for: $0) },
+      ["TCP", "UDP", "TCP", "TCP", "TCP"]
+    )
+    XCTAssertTrue(PortCatalog.userValue(for: 80).contains("panel administracyjny WWW"))
+    XCTAssertNotNil(PortCatalog.routerUse(for: 443))
+  }
+
+  func testNonRouterDoesNotReceiveRouterReadyCommands() {
+    let host = NetworkDevice(
+      address: "192.168.1.20",
+      hostname: "host.local",
+      openPorts: [22, 80],
+      lastSeen: Date()
+    )
+
+    XCTAssertEqual(host.kind, .computer)
+    XCTAssertTrue(RouterReadyCommandBuilder.commands(for: host).isEmpty)
   }
 
   func testDeviceProbeTelemetry() {
@@ -711,6 +1114,42 @@ struct KnownDeviceModelTests {
   }
 }
 
+@Suite("Scan history")
+struct ScanHistoryTests {
+  @Test("Old history remains readable and comparable summaries are normalized")
+  func oldHistoryRemainsReadable() throws {
+    let json = """
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "startedAt": 0,
+      "finishedAt": 60,
+      "profile": "quick",
+      "deviceCount": 1,
+      "openPortCount": 2,
+      "attentionCount": 0
+    }
+    """.data(using: .utf8)!
+
+    let summary = try JSONDecoder().decode(ScanSummary.self, from: json)
+    #expect(summary.deviceAddresses.isEmpty)
+    #expect(summary.isComparable == false)
+
+    let current = ScanSummary(
+      id: UUID(),
+      startedAt: .now,
+      finishedAt: .now,
+      profile: .quick,
+      subnet: "192.168.1.0/24",
+      deviceAddresses: ["192.168.1.20", "192.168.1.3"],
+      deviceCount: 2,
+      openPortCount: 2,
+      attentionCount: 0
+    )
+    #expect(current.deviceAddresses == ["192.168.1.3", "192.168.1.20"])
+    #expect(current.isComparable)
+  }
+}
+
 @MainActor
 @Suite("Known device store")
 struct KnownDeviceStoreTests {
@@ -867,6 +1306,42 @@ struct ScannerRegistryIntegrationTests {
     let key = KnownDeviceKey(networkID: "192.168.1.0/24", address: device.address)
     #expect(store.records.count == 1)
     #expect(scanner.newDeviceKeys == Set([key]))
+  }
+
+  @Test("Registry merge reports closed ports and hostname changes")
+  func mergeReportsClosedPortsAndHostnameChanges() {
+    let url = FileManager.default.temporaryDirectory
+      .appending(path: UUID().uuidString)
+      .appendingPathExtension("json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let store = KnownDeviceStore(fileURL: url)
+    let scanner = NetworkScanner(knownDeviceStore: store)
+    let key = KnownDeviceKey(networkID: "192.168.1.0/24", address: "192.168.1.20")
+
+    scanner.completeRegistryMerge(
+      devices: [NetworkDevice(
+        address: key.address,
+        hostname: "old.local",
+        openPorts: [80, 443],
+        lastSeen: .now
+      )],
+      networkID: key.networkID,
+      at: .now
+    )
+    scanner.completeRegistryMerge(
+      devices: [NetworkDevice(
+        address: key.address,
+        hostname: "new.local",
+        openPorts: [443],
+        lastSeen: .now
+      )],
+      networkID: key.networkID,
+      at: .now
+    )
+
+    #expect(scanner.closedServiceKeys == Set([key]))
+    #expect(scanner.hostnameChangedKeys == Set([key]))
+    #expect(scanner.disappearedDeviceKeys.isEmpty)
   }
 
   @Test("Creating a scanner does not mutate the registry")

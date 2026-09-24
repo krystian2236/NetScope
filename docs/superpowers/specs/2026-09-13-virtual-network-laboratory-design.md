@@ -1,14 +1,14 @@
-# NetScope — wirtualne laboratorium sieciowe
+# Northbyte Radar — wirtualne laboratorium sieciowe
 
 ## Cel
 
-NetScope ma uczyć podstaw diagnostyki sieciowej w bezpiecznym, realistycznym
+Northbyte Radar ma uczyć podstaw diagnostyki sieciowej w bezpiecznym, realistycznym
 środowisku. Użytkownik najpierw rozwiązuje zadania w całkowicie lokalnej,
 symulowanej sieci, a po ukończeniu lekcji może przejść do ograniczonego skanu
 własnej prywatnej sieci.
 
 Pierwsze wydanie korzysta z modelu freemium: darmowe demo oraz jednorazowy zakup
-NetScope Pro. Subskrypcja nie wchodzi w zakres pierwszego wydania.
+Northbyte Radar Pro. Subskrypcja nie wchodzi w zakres pierwszego wydania.
 
 ## Zasady bezpieczeństwa
 
@@ -58,7 +58,7 @@ wywołać systemową prośbę o dostęp do sieci lokalnej.
 ### EntitlementStore
 
 Izoluje integrację StoreKit 2 od interfejsu laboratoriów. Udostępnia stan demo,
-NetScope Pro oraz przywracanie zakupu. Brak połączenia ze sklepem nie może
+Northbyte Radar Pro oraz przywracanie zakupu. Brak połączenia ze sklepem nie może
 blokować darmowej zawartości.
 
 ## Przepływ użytkownika
@@ -85,9 +85,9 @@ Każde laboratorium zawiera wprowadzenie, zadania, stopniowane podpowiedzi,
 realistyczne wyniki, objaśnienia i podsumowanie. Demo udostępnia ograniczony,
 bezpieczny profil rzeczywistego skanowania. Nie wymaga konta ani chmury.
 
-## NetScope Pro
+## Northbyte Radar Pro
 
-NetScope Pro jest jednorazowym zakupem i odblokowuje:
+Northbyte Radar Pro jest jednorazowym zakupem i odblokowuje:
 
 - pełną bibliotekę laboratoriów dostępną w danej wersji aplikacji,
 - rozszerzone profile skanowania,
@@ -114,7 +114,7 @@ regularne, istotne pakiety nowych laboratoriów.
 Lokalnie przechowywane są wyłącznie postęp, ustawienia lekcji, historia
 symulowanych poleceń i stan odblokowania zwrócony przez StoreKit. Laboratorium
 nie wysyła wpisanych poleceń ani wyników. Rzeczywiste wyniki skanowania pozostają
-objęte istniejącą polityką lokalnego przechowywania NetScope.
+objęte istniejącą polityką lokalnego przechowywania Northbyte Radar.
 
 ## Weryfikacja
 

@@ -102,11 +102,20 @@ final class NetworkToolsModel: ObservableObject {
     isScanningPorts = true
 
     portScanTask = Task { [weak self] in
-      let results = await TCPPortProbe.scan(
+      var results: [PortScanEntry] = []
+
+      for await event in TCPPortProbe.scan(
         host: host,
         ports: ports
-      ) { completed, total in
-        self?.portScanProgress = (completed, total)
+      ) {
+        guard !Task.isCancelled else { break }
+
+        switch event {
+        case .progress(let completed, let total):
+          self?.portScanProgress = (completed, total)
+        case .completed(let entries):
+          results = entries
+        }
       }
 
       guard let self else { return }

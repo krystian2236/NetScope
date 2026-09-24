@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Dodać do NetScope całkowicie lokalne laboratorium terminalowe z trzema darmowymi lekcjami, bezpiecznym przejściem do skanera własnej sieci i jednorazowym odblokowaniem NetScope Pro.
+**Goal:** Dodać do Northbyte Radar całkowicie lokalne laboratorium terminalowe z trzema darmowymi lekcjami, bezpiecznym przejściem do skanera własnej sieci i jednorazowym odblokowaniem Northbyte Radar Pro.
 
 **Architecture:** Deterministyczny `VirtualNetwork` i interpreter `VirtualLabEngine` generują wyniki bez uruchamiania shella. Misje, postęp i interfejs terminala są oddzielnymi modułami; istniejący `NetworkScanner` jest używany dopiero po świadomym przejściu użytkownika. StoreKit 2 jest ukryty za `EntitlementStore`, dzięki czemu demo działa także bez sklepu i Internetu.
 
@@ -17,7 +17,7 @@
 - Wszystkie dane laboratorium pozostają lokalnie i działają bez Internetu.
 - Prawdziwy skan jest osobną czynnością i zachowuje ograniczenie do prywatnych adresów.
 - Demo działa bez zakupu, konta oraz usługi chmurowej.
-- Pierwsza monetyzacja to jeden niekonsumowalny zakup `NetScope Pro`, nie subskrypcja.
+- Pierwsza monetyzacja to jeden niekonsumowalny zakup `Northbyte Radar Pro`, nie subskrypcja.
 - Nie zapisujemy haseł, tokenów ani kluczy prywatnych.
 - Zachowujemy iOS 17.0 jako minimalną wersję systemu.
 - Każdy commit wymaga osobnego, jednoznacznego zatwierdzenia użytkownika.
@@ -529,7 +529,7 @@ xcodebuild test -project NetScope.xcodeproj -scheme NetScope \
 
 Po zgodzie użytkownika commit: `feat: connect labs to local scanner`.
 
-### Task 6: Jednorazowe odblokowanie NetScope Pro
+### Task 6: Jednorazowe odblokowanie Northbyte Radar Pro
 
 **Files:**
 - Create: `NetScope/EntitlementStore.swift`
@@ -588,7 +588,7 @@ final class EntitlementStore: ObservableObject {
       }
       errorMessage = nil
     } catch {
-      errorMessage = "Nie udało się odświeżyć dostępu do NetScope Pro."
+      errorMessage = "Nie udało się odświeżyć dostępu do Northbyte Radar Pro."
     }
   }
 

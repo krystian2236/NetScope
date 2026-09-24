@@ -10,6 +10,10 @@ final class NetworkScanner: ObservableObject {
   @Published private(set) var history: [ScanSummary] = []
   @Published private(set) var sessionDetails: ScanSessionDetails?
   @Published private(set) var newDeviceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var newServiceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var closedServiceKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var hostnameChangedKeys: Set<KnownDeviceKey> = []
+  @Published private(set) var disappearedDeviceKeys: Set<KnownDeviceKey> = []
   @Published private(set) var stage: ScanStage = .network
   let bonjourDiscovery = BonjourDiscovery()
   let knownDeviceStore: KnownDeviceStore
@@ -35,6 +39,10 @@ final class NetworkScanner: ObservableObject {
 
     cancellationRequested = false
     newDeviceKeys = []
+    newServiceKeys = []
+    closedServiceKeys = []
+    hostnameChangedKeys = []
+    disappearedDeviceKeys = []
     devices = []
     stage = .network
     phase = .preparing
@@ -45,7 +53,7 @@ final class NetworkScanner: ObservableObject {
       return
     }
     guard context.isPrivateOrLinkLocal else {
-      phase = .failed("Dla bezpieczeństwa NetScope skanuje tylko prywatne sieci lokalne.")
+      phase = .failed("Dla bezpieczeństwa Northbyte Radar skanuje tylko prywatne sieci lokalne.")
       return
     }
 
@@ -136,6 +144,33 @@ final class NetworkScanner: ObservableObject {
     networkID: String,
     at date: Date
   ) {
+    let currentKeys = Set(devices.map { KnownDeviceKey(networkID: networkID, address: $0.address) })
+    newServiceKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return Set(previous.openPorts) == Set(device.openPorts) ? nil : key
+      }
+    )
+    closedServiceKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return Set(previous.openPorts).subtracting(device.openPorts).isEmpty ? nil : key
+      }
+    )
+    hostnameChangedKeys = Set(
+      devices.compactMap { device -> KnownDeviceKey? in
+        let key = KnownDeviceKey(networkID: networkID, address: device.address)
+        guard let previous = knownDeviceStore.record(for: key) else { return nil }
+        return previous.hostname == device.hostname ? nil : key
+      }
+    )
+    disappearedDeviceKeys = Set(
+      knownDeviceStore.records
+        .filter { $0.key.networkID == networkID && !currentKeys.contains($0.key) }
+        .map(\.key)
+    )
     newDeviceKeys = knownDeviceStore.merge(
       devices: devices,
       networkID: networkID,
@@ -170,6 +205,8 @@ final class NetworkScanner: ObservableObject {
       startedAt: startedAt,
       finishedAt: finishedAt,
       profile: profile,
+      subnet: context?.scanRangeDescription,
+      deviceAddresses: devices.map(\.address),
       deviceCount: devices.count,
       openPortCount: devices.reduce(0) { $0 + $1.openPorts.count },
       attentionCount: devices.filter { $0.exposure == .high }.count
@@ -281,7 +318,7 @@ private struct HostProbeOutcome: Sendable {
   let deniedCount: Int
 }
 
-private struct IPv4SortKey: Comparable {
+struct IPv4SortKey: Comparable {
   private let value: UInt32
 
   init(_ address: String) {

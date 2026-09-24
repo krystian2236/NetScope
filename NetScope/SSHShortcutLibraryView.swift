@@ -99,10 +99,13 @@ struct SSHShortcutLibraryView: View {
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack { UIRefCopyButton(ref: .ssh); Spacer() }
+          #endif
           InfoBanner(
             icon: "link",
             title: "Połączenie i diagnostyka",
-            message: "NetScope otwiera logowanie w zainstalowanym kliencie SSH. Dodatkowe polecenia diagnostyczne kopiuje do świadomego uruchomienia."
+            message: "Northbyte Radar otwiera logowanie w zainstalowanym kliencie SSH. Dodatkowe polecenia diagnostyczne kopiuje do świadomego uruchomienia."
           )
           categoryPicker
           preparation
@@ -272,7 +275,7 @@ struct SSHShortcutLibraryView: View {
             }
             Button("Anuluj", role: .cancel) {}
           } message: {
-            Text("Zainstaluj Termius, aby otwierać sesje SSH bezpośrednio z NetScope.")
+            Text("Zainstaluj Termius, aby otwierać sesje SSH bezpośrednio z Northbyte Radar.")
           }
         }
 

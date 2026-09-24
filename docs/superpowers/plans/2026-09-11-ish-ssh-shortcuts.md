@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- NetScope only prepares and copies commands; it never opens SSH or executes shell commands.
+- Northbyte Radar only prepares and copies commands; it never opens SSH or executes shell commands.
 - Store only optional SSH username and Mac host in `UserDefaults`; never store passwords or private keys.
 - Accept only private IPv4 addresses/subnets through `ISHTargetValidator` for network scan targets.
 - Do not add destructive commands, `sudo`, password attacks, exploits, firewall changes, or service mutations.
@@ -256,7 +256,7 @@ struct SSHShortcutLibraryView: View {
 
 The screen must contain:
 
-- an `InfoBanner` stating that NetScope only copies commands,
+- an `InfoBanner` stating that Northbyte Radar only copies commands,
 - a collapsed `DisclosureGroup("Jak przygotować iSH i Maca")` with the five spec requirements,
 - text fields for username and Mac host plus `Button("Wyczyść dane")`,
 - a private-target picker populated from `context.scanRangeDescription` and device addresses,

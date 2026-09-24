@@ -1,11 +1,15 @@
-# NetScope
+# Northbyte Radar
 
-NetScope to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
+Northbyte Radar to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
 i popularne usługi w prywatnej sieci lokalnej.
 
-## Funkcje w wersji 1.3
+## Funkcje w wersji 2.1
 
-- pięć czytelnych zakładek: **Start**, **Sieć**, **Porty**, **Ping** i **Bonjour**,
+- pięć głównych zakładek: **Start**, **Network**, **Security**, **Lab** i **Tools**,
+- odświeżony pulpit w stylu Apple Pro z technicznymi kartami danych,
+- zakładka **Security** z konkretnymi przyczynami ekspozycji, priorytetem i zaleceniem,
+- porównanie skanów: nowe urządzenia, nowe lub zmienione usługi i urządzenia niewidoczne,
+- rozbudowany profil urządzenia z nazwą, typem, portami, szyfrowaniem i telemetrią,
 - kompaktowy pulpit z liczbą urządzeń, usług i wyników wymagających uwagi,
 - trzy profile skanu prywatnej podsieci IPv4 `/24`: szybki, standardowy
   i rozszerzony,
@@ -25,6 +29,9 @@ i popularne usługi w prywatnej sieci lokalnej.
 - skaner portów w stylu Nmap z profilami WWW, IoT, zdalnego dostępu,
   serwerów i baz danych oraz zakresem własnym do 512 portów,
 - wyniki skanowania pozostają na urządzeniu.
+- Laboratory prowadzi od uruchomienia do wyniku, findingu, priorytetu, rekomendacji i ponownej kontroli,
+- Virtual Lab zawiera deterministyczne scenariusze Nmap, SSH, DNS, Curl/HTTP i nietypowego portu,
+- Scan Diff rozróżnia nowe urządzenia, zniknięte urządzenia, nowe lub zamknięte porty oraz zmiany hostname.
 
 ## Integracja z iSH
 
@@ -36,7 +43,7 @@ Ekran **Start → Narzędzia dla iSH** przygotowuje:
   przenieść do lokalizacji iSH i uruchomić,
 - trzy tryby: inwentaryzacja, rozszerzony TCP i lekka identyfikacja usług.
 
-NetScope używa w poleceniach iSH trybu `--unprivileged -sT`, czyli zwykłych
+Northbyte Radar używa w poleceniach iSH trybu `--unprivileged -sT`, czyli zwykłych
 połączeń TCP zamiast surowych pakietów. Cel jest ograniczony do prywatnego IPv4.
 Samodzielny skrypt `NetScope-iSH-Toolkit.sh` jest również dołączony obok paczki
 projektu.

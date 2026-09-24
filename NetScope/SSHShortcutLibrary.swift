@@ -62,8 +62,8 @@ enum SSHShortcutLibrary {
     SSHShortcut(id: .commonPorts, category: .ports, title: "Najważniejsze porty", summary: "Sprawdza typowe porty TCP bez uprawnień administratora.", place: .onMac),
     SSHShortcut(id: .serviceVersions, category: .ports, title: "Wersje usług", summary: "Lekko rozpoznaje usługi na typowych portach TCP.", place: .onMac),
     SSHShortcut(id: .detailedHost, category: .ports, title: "Dokładna analiza hosta", summary: "Rozszerza bezpieczną analizę jednego prywatnego hosta.", place: .onMac),
-    SSHShortcut(id: .createReportDirectory, category: .reports, title: "Utwórz katalog raportów", summary: "Uruchomienie tworzy folder NetScope w Dokumentach.", place: .onMac),
-    SSHShortcut(id: .listReports, category: .reports, title: "Pokaż raporty", summary: "Wyświetla zapisane pliki raportów NetScope.", place: .onMac),
+    SSHShortcut(id: .createReportDirectory, category: .reports, title: "Utwórz katalog raportów", summary: "Uruchomienie tworzy folder Northbyte Radar w Dokumentach.", place: .onMac),
+    SSHShortcut(id: .listReports, category: .reports, title: "Pokaż raporty", summary: "Wyświetla zapisane pliki raportów Northbyte Radar.", place: .onMac),
   ]
 
   private static let safeToken = /^[A-Za-z0-9._-]+$/
@@ -103,9 +103,9 @@ enum SSHShortcutLibrary {
         "nmap --unprivileged -sT -Pn -sV --version-light --open --reason -p '\(commonPortList)' \($0)"
       }
     case .createReportDirectory:
-      return .command("mkdir -p \"$HOME/Documents/NetScope\"")
+      return .command("mkdir -p \"$HOME/Documents/Northbyte Radar\"")
     case .listReports:
-      return .command("find \"$HOME/Documents/NetScope\" -maxdepth 1 -type f -print")
+      return .command("find \"$HOME/Documents/Northbyte Radar\" -maxdepth 1 -type f -print")
     }
   }
 

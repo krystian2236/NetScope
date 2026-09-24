@@ -1,4 +1,37 @@
 import SwiftUI
+#if NETSCOPE_DEV
+import UIKit
+#endif
+
+#if NETSCOPE_DEV
+struct UIRefCopyButton: View {
+  let ref: UIRef
+  @State private var copied = false
+
+  var body: some View {
+    Button {
+      UIPasteboard.general.string = ref.clipboardText
+      copied = true
+
+      UIAccessibility.post(
+        notification: .announcement,
+        argument: "Skopiowano \(ref.rawValue)"
+      )
+
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        copied = false
+      }
+    } label: {
+      Image(systemName: copied ? "checkmark" : "doc.on.doc")
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(5)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Kopiuj UIREF \(ref.rawValue)")
+  }
+}
+#endif
 
 struct ToolCard<Content: View>: View {
   let icon: String
@@ -26,6 +59,39 @@ struct ToolCard<Content: View>: View {
     }
     .padding(12)
     .background(.background, in: RoundedRectangle(cornerRadius: 14))
+  }
+}
+
+struct NetScopeCard<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .background(.background, in: RoundedRectangle(cornerRadius: 16))
+      .overlay {
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(Color.cyan.opacity(0.14), lineWidth: 1)
+      }
+  }
+}
+
+struct StatusPill: View {
+  let title: String
+  var tint: Color = .cyan
+
+  var body: some View {
+    HStack(spacing: 5) {
+      Circle()
+        .fill(tint)
+        .frame(width: 6, height: 6)
+      Text(title)
+        .font(.caption2.weight(.semibold))
+        .textCase(.uppercase)
+    }
+    .foregroundStyle(tint)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 5)
+    .background(tint.opacity(0.1), in: Capsule())
   }
 }
 
@@ -73,6 +139,10 @@ struct MetricCard: View {
     }
     .padding(10)
     .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    .overlay {
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(Color.cyan.opacity(0.1), lineWidth: 1)
+    }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
     .accessibilityValue(value)
@@ -106,23 +176,21 @@ struct DiagnosticResultView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 7) {
       Divider()
-      Label(result.host, systemImage: "globe")
+      Label("Wynik diagnostyki", systemImage: "checkmark.seal")
         .font(.caption.weight(.semibold))
 
+      DetailRow(label: "Cel", value: result.host, monospaced: true)
+
       if result.resolvedAddresses.isEmpty {
-        Label("DNS: brak odpowiedzi", systemImage: "xmark.circle")
-          .font(.caption)
-          .foregroundStyle(.orange)
+        DetailRow(label: "DNS", value: "Brak odpowiedzi")
       } else {
         ForEach(result.resolvedAddresses, id: \.self) { address in
-          AddressRow(label: "DNS", value: address)
+          DetailRow(label: "DNS", value: address, monospaced: true)
         }
       }
 
       HStack {
-        Label(statusText, systemImage: statusIcon)
-          .font(.caption.weight(.medium))
-          .foregroundStyle(result.portResult.status.isOpen ? .green : .orange)
+        DetailRow(label: "Status", value: statusText)
         Spacer()
         if let latency = result.portResult.latencyMilliseconds {
           Text(String(format: "%.1f ms", latency))
@@ -130,7 +198,38 @@ struct DiagnosticResultView: View {
             .foregroundStyle(.secondary)
         }
       }
+
+      DetailRow(label: "Znaczenie", value: meaning)
+      DetailRow(label: "Możliwa przyczyna", value: possibleCause)
+      DetailRow(label: "Następny krok", value: nextStep)
+
+      ShareLink(item: reportText, subject: Text("Northbyte Radar — raport diagnostyczny")) {
+        Label("Udostępnij bezpieczny raport", systemImage: "square.and.arrow.up")
+          .font(.caption.weight(.semibold))
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.bordered)
+      .tint(.cyan)
+
+      Text("Raport zawiera wpisany cel i wyniki lokalnego testu. Nie dodaje publicznego IP ani danych konta.")
+        .font(.caption2)
+        .foregroundStyle(.secondary)
     }
+  }
+
+  private var reportText: String {
+    let addresses = result.resolvedAddresses.isEmpty
+      ? "brak odpowiedzi"
+      : result.resolvedAddresses.joined(separator: ", ")
+    return """
+    Northbyte Radar — raport diagnostyczny
+    Cel: \(result.host)
+    DNS: \(addresses)
+    Port: \(result.portResult.port)
+    Status: \(statusText)
+    Czas: \(result.portResult.latencyMilliseconds.map { String(format: "%.1f ms", $0) } ?? "brak")
+    Sprawdzono: \(result.checkedAt.formatted(date: .abbreviated, time: .shortened))
+    """
   }
 
   private var statusIcon: String {
@@ -143,6 +242,50 @@ struct DiagnosticResultView: View {
     case .closed: "Port \(result.portResult.port) zamknięty"
     case .timedOut: "Brak odpowiedzi portu \(result.portResult.port)"
     case .localNetworkDenied: "Brak dostępu do sieci lokalnej"
+    }
+  }
+
+  private var meaning: String {
+    if result.resolvedAddresses.isEmpty {
+      return "Nazwa hosta nie została rozpoznana przez DNS."
+    }
+    if result.portResult.status.isOpen {
+      return "Host odpowiada, a wskazana usługa przyjmuje połączenia TCP."
+    }
+    return "Host został rozpoznany, ale wskazana usługa nie przyjęła połączenia."
+  }
+
+  private var possibleCause: String {
+    switch result.portResult.status {
+    case .open: "Usługa działa albo port jest dostępny w tej sieci."
+    case .closed: "Usługa może być wyłączona albo chroniona przez zaporę."
+    case .timedOut: "Host lub zapora nie odpowiedziały w wyznaczonym czasie."
+    case .localNetworkDenied: "System nie udostępnił aplikacji dostępu do sieci lokalnej."
+    }
+  }
+
+  private var nextStep: String {
+    if result.resolvedAddresses.isEmpty {
+      return "Sprawdź nazwę hosta i połączenie z siecią."
+    }
+    return result.portResult.status.isOpen
+      ? "Zweryfikuj, czy ta usługa powinna być dostępna."
+      : "Sprawdź adres hosta, port i reguły zapory."
+  }
+}
+
+private struct DetailRow: View {
+  let label: String
+  let value: String
+  var monospaced = false
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(label)
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+      Text(value)
+        .font(monospaced ? .caption.monospaced() : .caption)
     }
   }
 }

@@ -1,7 +1,47 @@
-# NetScope — historia zmian
+# Northbyte Radar — historia zmian
 
-## 1.3
+## Unreleased
 
+- dodano Toolbox jako piątą zakładkę nawigacji,
+- dodano kartę „Ostatnia aktywność” z bieżącym stanem i czasem ostatniego skanu,
+- dodano w Network przyciski „Skanuj sieć” i „Sprawdź port”,
+- ustawiono Network jako główne miejsce uruchamiania skanu,
+- dodano rozwijane szczegóły otwartego portu z zawijanymi wartościami i krótkimi zaleceniami,
+- ujednolicono widoczną nazwę aplikacji jako Northbyte Radar,
+- zwiększono wersję aplikacji do 2.1.2 (build 14).
+
+## 2.1.2
+
+- połączono Start i Scan, dodano zwijaną Ścieżkę nauki oraz narzędzia deweloperskie w lekcjach,
+- dodano obsługę i zaliczenie polecenia `dig -x 192.168.50.20`,
+- zwiększono wersję aplikacji do 2.1.2 (build 10).
+
+## 2.1.1
+
+- uporządkowano priorytet głównej akcji na ekranie Start,
+- poprawiono bezpieczne anulowanie prób TCP podczas skanowania,
+- zwiększono wersję aplikacji do 2.1.1 (build 9).
+
+## 2.1
+
+- domknięto lokalny przepływ Laboratory: Run → Result → Finding → Priority → Recommendation → Re-check,
+- dodano deterministyczne scenariusze DNS, HTTP bez TLS i nietypowego portu oraz programy Dig i Curl w Laboratory,
+- rozszerzono Scan Diff o zamknięte porty i zmienione hostname,
+- zwiększono wersję aplikacji do 2.1 (build 8).
+
+## 2.0
+
+- dodano widoczny na ekranie Start identyfikator otwartego bundle: wersja, build, tryb i Bundle ID,
+- ujednolicono identyfikację wersji między ekranem Start i O aplikacji,
+- dodano kontrolę spójności wersji, buildu i changelogu przed push.
+
+## 1.4
+
+- przebudowano główną nawigację na **Start**, **Network**, **Security**, **Lab** i **Tools**,
+- dodano produkcyjną zakładkę **Security** z przyczynami, priorytetami i zaleceniami zamiast sztucznej punktacji,
+- dodano wykrywanie zmian między skanami: nowych urządzeń, usług oraz urządzeń niewidocznych,
+- odświeżono pulpit i karty w stylu Apple Pro + Cyber Layer,
+- zachowano osobny wariant developerski z UIREF, niewidoczny w aplikacji App Store,
 - dodano ekran szczegółów przebiegu skanowania,
 - dodano liczbę zaplanowanych i wykonanych prób TCP,
 - dodano podział odpowiedzi na otwarte, zamknięte, bez odpowiedzi i bez dostępu,
@@ -11,6 +51,10 @@
 - ograniczono generowane cele iSH do prywatnych adresów IPv4,
 - dodano samodzielny skrypt `NetScope-iSH-Toolkit.sh`,
 - rozszerzono testy telemetrii i generatora poleceń.
+
+## 1.3
+
+- poprzednia wersja produkcyjna przed przebudową nawigacji i Security.
 
 ## 1.2
 

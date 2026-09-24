@@ -58,6 +58,7 @@ struct DeviceRow: View {
 struct DeviceDetailView: View {
   let device: NetworkDevice
   let key: KnownDeviceKey?
+  @ObservedObject var scanner: NetworkScanner
   @ObservedObject var knownDeviceStore: KnownDeviceStore
   @State private var customName: String
   @State private var isConfirmingRemoval = false
@@ -65,10 +66,12 @@ struct DeviceDetailView: View {
   init(
     device: NetworkDevice,
     key: KnownDeviceKey?,
+    scanner: NetworkScanner,
     knownDeviceStore: KnownDeviceStore
   ) {
     self.device = device
     self.key = key
+    self.scanner = scanner
     self.knownDeviceStore = knownDeviceStore
     _customName = State(
       initialValue: key.flatMap { knownDeviceStore.record(for: $0)?.customName } ?? ""
@@ -82,13 +85,20 @@ struct DeviceDetailView: View {
 
   var body: some View {
     List {
-      identitySection
-      savedDeviceSection
-      exposureSection
-      scanTelemetrySection
-      servicesSection
-      ishSection
-      explanationSection
+      #if NETSCOPE_DEV
+      HStack { UIRefCopyButton(ref: .scannerDeviceDetails); Spacer() }
+      #endif
+      if device.kind == .router {
+        routerSummarySection
+      } else {
+        identitySection
+        savedDeviceSection
+        exposureSection
+        scanTelemetrySection
+        servicesSection
+        ishSection
+        explanationSection
+      }
     }
     .font(.subheadline)
     .navigationTitle(device.displayName(using: record))
@@ -201,7 +211,7 @@ struct DeviceDetailView: View {
   }
 
   private var servicesSection: some View {
-    Section("Dostępne usługi TCP") {
+    Section("Wykryte usługi") {
       ForEach(device.openPorts, id: \.self) { port in
         let info = PortCatalog.info(for: port)
         HStack(alignment: .top, spacing: 9) {
@@ -233,6 +243,107 @@ struct DeviceDetailView: View {
         .padding(.vertical, 2)
       }
     }
+  }
+
+  private var routerSummarySection: some View {
+    Group {
+      Section("Podsumowanie") {
+        HStack {
+          VStack(alignment: .leading, spacing: 3) {
+            Text("Router / Brama").font(.headline)
+            Text(device.address).font(.caption.monospaced()).foregroundStyle(.secondary)
+            if let customName = record?.customName, !customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+              Text(customName).font(.caption).foregroundStyle(.secondary)
+            }
+            if let hostname = device.hostname, hostname != device.address {
+              Text(hostname).font(.caption).foregroundStyle(.secondary)
+            }
+          }
+          Spacer()
+          Text("Online").font(.caption.weight(.semibold)).foregroundStyle(.green)
+        }
+        Text(routerSummaryText)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        LabeledContent("Otwarte usługi", value: "\(device.openPorts.count)")
+        LabeledContent("Szyfrowane / pozostałe", value: "\(device.encryptedServiceCount) / \(device.unencryptedServiceCount)")
+        LabeledContent("Poziom ekspozycji", value: device.exposure.title)
+        NavigationLink("Co to oznacza?") { exposureDetail }
+      }
+
+      Section("Wykryte usługi") {
+        ForEach(device.openPorts.prefix(2), id: \.self) { port in
+          NavigationLink {
+            ServiceDetailView(device: device, port: port)
+          } label: {
+            LabeledContent(
+              "\(PortCatalog.info(for: port).name) \(port)/\(PortCatalog.transport(for: port))",
+              value: PortCatalog.info(for: port).category
+            )
+          }
+        }
+        NavigationLink("Wszystkie usługi") { OpenServicesView(device: device) }
+      }
+
+      Section("Ostatni skan") {
+        if let details = scanner.sessionDetails {
+          LabeledContent("Zakończono", value: (details.finishedAt ?? details.startedAt).formatted(date: .abbreviated, time: .shortened))
+          LabeledContent("Sprawdzone / wykryte", value: "\(device.testedPortCount) / \(device.openPorts.count)")
+          LabeledContent("Status", value: scanner.phase.isScanning ? "W toku" : "Zakończony")
+          NavigationLink("Szczegóły skanu") { ScanDetailsView(scanner: scanner) }
+        } else {
+          Text("Brak danych ostatniego przebiegu skanu.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      Section {
+        NavigationLink("Narzędzia dla tego urządzenia") {
+          DeviceToolsView(device: device)
+        }
+        NavigationLink("Informacje o urządzeniu") { deviceInfoDetail }
+      }
+    }
+  }
+
+  private var routerSummaryText: String {
+    let count = device.openPorts.count
+    guard count > 0 else { return "Nie wykryto otwartych usług podczas ostatniego sprawdzania." }
+    if device.openPorts.contains(80) && device.openPorts.contains(443) {
+      return "Wykryto \(count) usług. HTTPS jest szyfrowane, a HTTP nie — do logowania wybieraj HTTPS."
+    }
+    return "Wykryto \(count) usług. Nie oznacza to podatności, ale pokazuje funkcje dostępne dla urządzeń w tej sieci."
+  }
+
+  private var exposureDetail: some View {
+    List {
+      Section("Bezpieczeństwo") {
+        LabeledContent("Poziom ekspozycji", value: device.exposure.title)
+        Text("Poziom ekspozycji jest szacunkiem opartym na usługach widocznych podczas lokalnego skanu. Nie jest testem podatności.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Text(device.exposure.recommendation)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Section("Metryki") {
+        LabeledContent("Otwarte usługi", value: "\(device.openPorts.count)")
+        LabeledContent("Szyfrowane", value: "\(device.encryptedServiceCount)")
+        LabeledContent("Bez gwarancji szyfrowania", value: "\(device.unencryptedServiceCount)")
+      }
+    }
+    .navigationTitle("Bezpieczeństwo")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var deviceInfoDetail: some View {
+    List {
+      identitySection
+      savedDeviceSection
+    }
+    .navigationTitle("Informacje o urządzeniu")
+    .navigationBarTitleDisplayMode(.inline)
   }
 
   private var scanTelemetrySection: some View {
@@ -286,6 +397,144 @@ struct DeviceDetailView: View {
     guard let key else { return }
     knownDeviceStore.remove(key)
     customName = ""
+  }
+}
+
+private struct DeviceToolsView: View {
+  let device: NetworkDevice
+
+  private var commands: [RouterReadyCommand] {
+    RouterReadyCommandBuilder.commands(for: device)
+  }
+
+  var body: some View {
+    List {
+      Section("Podstawowe") {
+        commandRows(prefixes: ["Sprawdź dostępność", "Sprawdź port"])
+      }
+      Section("Sieć") {
+        commandRows(prefixes: ["Sprawdź trasę", "Sprawdź DNS"])
+      }
+      Section("Usługi") {
+        commandRows(prefixes: ["Otwórz panel WWW", "Połącz przez SSH", "Rozpoznaj usługi"])
+      }
+      Section("Terminal") {
+        NavigationLink("Przygotuj polecenie w iSH") {
+          ISHToolkitView(context: nil, devices: [device], preferredAddress: device.address)
+        }
+        Text("Northbyte Radar niczego nie uruchamia automatycznie; polecenie wymaga świadomego skopiowania i uruchomienia.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .navigationTitle("Narzędzia")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  @ViewBuilder
+  private func commandRows(prefixes: [String]) -> some View {
+    ForEach(commands.filter { item in prefixes.contains { item.title.hasPrefix($0) } }, id: \.command) { item in
+      VStack(alignment: .leading, spacing: 3) {
+        Text(item.title).font(.subheadline.weight(.semibold))
+        Text(description(for: item.title)).font(.caption).foregroundStyle(.secondary)
+        Text(item.command).font(.caption2.monospaced()).textSelection(.enabled)
+      }
+      .padding(.vertical, 3)
+    }
+  }
+
+  private func description(for title: String) -> String {
+    switch title {
+    case "Sprawdź dostępność": "Sprawdza, czy urządzenie odpowiada w sieci lokalnej."
+    case "Sprawdź trasę": "Pokazuje drogę pakietów do urządzenia."
+    case "Sprawdź DNS": "Sprawdza rozwiązywanie nazwy przez wykryty resolver DNS."
+    case "Połącz przez SSH": "Przygotowuje zdalne połączenie administracyjne."
+    case "Rozpoznaj usługi": "Próbuje rozpoznać wersje wykrytych usług."
+    default: "Sprawdza dostępność konkretnej usługi."
+    }
+  }
+}
+
+private struct OpenServicesView: View {
+  let device: NetworkDevice
+
+  var body: some View {
+    List {
+      Section("Wykryte podczas ostatniego skanu") {
+        ForEach(device.openPorts, id: \.self) { port in
+          NavigationLink {
+            ServiceDetailView(device: device, port: port)
+          } label: {
+            LabeledContent(
+              "\(PortCatalog.info(for: port).name) \(port)/\(PortCatalog.transport(for: port))",
+              value: PortCatalog.info(for: port).category
+            )
+          }
+        }
+      }
+    }
+    .navigationTitle("Wykryte usługi")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+}
+
+private struct ServiceDetailView: View {
+  let device: NetworkDevice
+  let port: UInt16
+
+  private var info: PortInfo { PortCatalog.info(for: port) }
+  private var commands: [RouterReadyCommand] {
+    RouterReadyCommandBuilder.commands(for: device).filter { command in
+      command.command.contains(" \(port)")
+        || (port == 22 && command.command.hasPrefix("ssh "))
+        || (port == 53 && command.command.hasPrefix("dig @"))
+        || ([80, 443, 8000, 8080, 8081, 8443, 8888].contains(port) && command.command.contains("://"))
+    }
+  }
+
+  var body: some View {
+    List {
+      Section {
+        LabeledContent("Usługa", value: info.name)
+        LabeledContent("Port / protokół", value: "\(port)/\(PortCatalog.transport(for: port))")
+        LabeledContent("Szyfrowanie", value: info.isEncrypted ? "Tak" : "Brak gwarancji")
+      }
+      Section("Wyjaśnienie") {
+        LabeledContent("Co to jest", value: info.description)
+        LabeledContent("Co daje wykrycie", value: PortCatalog.userValue(for: port))
+        if let use = PortCatalog.routerUse(for: port) {
+          LabeledContent("Typowe zastosowanie", value: use)
+        }
+        Text(nextStep)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Section("Gotowe akcje") {
+        ForEach(commands, id: \.command) { item in
+          VStack(alignment: .leading, spacing: 3) {
+            Text(item.title).font(.caption.weight(.semibold))
+            Text(item.command).font(.caption2.monospaced()).textSelection(.enabled)
+          }
+        }
+      }
+    }
+    .navigationTitle(info.name)
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var nextStep: String {
+    switch port {
+    case 80 where device.openPorts.contains(443):
+      "Co warto zrobić dalej: jeśli panel jest dostępny, preferuj HTTPS zamiast HTTP."
+    case 443, 8443:
+      "Co warto zrobić dalej: korzystaj z panelu tylko w zaufanej sieci lokalnej."
+    case 22:
+      "Co warto zrobić dalej: sprawdź, czy SSH jest potrzebne i ograniczone do zaufanych urządzeń."
+    case 53:
+      "Co warto zrobić dalej: użyj DNS tylko jako lokalnego resolvera, jeśli tego potrzebujesz."
+    default:
+      "Co warto zrobić dalej: potwierdź, czy ta usługa jest potrzebna na urządzeniu."
+    }
   }
 }
 
@@ -444,7 +693,14 @@ struct ServicesView: View {
           }
         }
       }
-      .navigationTitle("Usługi Bonjour")
+    .overlay(alignment: .topTrailing) {
+      #if NETSCOPE_DEV
+      UIRefCopyButton(ref: .scannerBonjour)
+        .padding(.top, 8)
+        .padding(.trailing, 12)
+      #endif
+    }
+    .navigationTitle("Usługi Bonjour")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
@@ -474,10 +730,19 @@ struct ServicesView: View {
 }
 
 struct AboutView: View {
+  private let identity = AppReleaseIdentity.current
+
   var body: some View {
     List {
+      #if NETSCOPE_DEV
+      HStack { UIRefCopyButton(ref: .about); Spacer() }
+      #endif
       Section("Wersja") {
-        LabeledContent("NetScope", value: "1.3")
+        LabeledContent("Nazwa", value: identity.displayName)
+        LabeledContent("Wersja", value: identity.version)
+        LabeledContent("Build", value: identity.build)
+        LabeledContent("Bundle ID", value: identity.bundleIdentifier)
+        LabeledContent("Tryb", value: identity.distribution)
         Text("Natywny zestaw narzędzi do obserwacji własnej sieci na iOS.")
           .font(.caption)
           .foregroundStyle(.secondary)
@@ -512,13 +777,13 @@ struct AboutView: View {
 
       Section("iSH") {
         Text(
-          "NetScope generuje polecenia i skrypty dla Nmap w trybie TCP connect. Skrypt trzeba świadomie zapisać i uruchomić w iSH."
+          "Northbyte Radar generuje polecenia i skrypty dla Nmap w trybie TCP connect. Skrypt trzeba świadomie zapisać i uruchomić w iSH."
         )
       }
 
       Section("Dostęp") {
         Link(
-          "Otwórz ustawienia NetScope",
+          "Otwórz ustawienia Northbyte Radar",
           destination: URL(string: UIApplication.openSettingsURLString)!
         )
       }
@@ -526,6 +791,7 @@ struct AboutView: View {
     .navigationTitle("O aplikacji")
     .navigationBarTitleDisplayMode(.inline)
   }
+
 }
 
 struct ScanCSVDocument: FileDocument {

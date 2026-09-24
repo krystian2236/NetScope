@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- NetScope nie uruchamia Nmap ani Nuclei; wyłącznie buduje i kopiuje polecenia.
+- Northbyte Radar nie uruchamia Nmap ani Nuclei; wyłącznie buduje i kopiuje polecenia.
 - Poprawne opcje ostrzegawcze są kopiowalne; błędne fragmenty są widoczne, ale pomijane w poleceniu.
 - Pola sekretów nie używają AppStorage, SceneStorage ani UserDefaults.
 - Każda wartość użytkownika jest cytowana pojedynczym cudzysłowem, a apostrof zostaje bezpiecznie zastąpiony.
@@ -219,7 +219,7 @@ Expected: FAIL because nuclei and toggle(optionID:) are missing.
 
 - [ ] **Step 3: Implement ToolLearningView**
 
-Use safeAreaInset at the top for the permanently visible syntax, ordered fragment chips, command, copy button and explanation. Render one DisclosureGroup per category. Render choice as Picker, integer with numeric keyboard, other values with TextField, and secret with SecureField plus: NetScope nie zapisuje tej wartości.
+Use safeAreaInset at the top for the permanently visible syntax, ordered fragment chips, command, copy button and explanation. Render one DisclosureGroup per category. Render choice as Picker, integer with numeric keyboard, other values with TextField, and secret with SecureField plus: Northbyte Radar nie zapisuje tej wartości.
 
 Hold all selection state only in @State. Never use a persistence property wrapper in this view.
 

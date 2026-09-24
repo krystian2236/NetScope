@@ -19,3 +19,6 @@ Packages/
 
 # Local Git worktrees
 .worktrees/
+
+# Local backup files
+*.before-*

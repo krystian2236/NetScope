@@ -1,10 +1,10 @@
-# NetScope Toolbox — katalog edukacyjny Nmap i Nuclei
+# Northbyte Radar Toolbox — katalog edukacyjny Nmap i Nuclei
 
 Data: 2026-09-12
 
 ## Cel
 
-Toolbox ma uczyć składania poprawnych poleceń Nmap i Nuclei poprzez wybieranie opisanych fragmentów. Użytkownik widzi pełną składnię, znaczenie każdego elementu, wymagania, ostrzeżenia i wynikowe polecenie. NetScope nie wykonuje skanów — przygotowuje polecenie do świadomego użycia na własnych systemach lub za zgodą właściciela.
+Toolbox ma uczyć składania poprawnych poleceń Nmap i Nuclei poprzez wybieranie opisanych fragmentów. Użytkownik widzi pełną składnię, znaczenie każdego elementu, wymagania, ostrzeżenia i wynikowe polecenie. Northbyte Radar nie wykonuje skanów — przygotowuje polecenie do świadomego użycia na własnych systemach lub za zgodą właściciela.
 
 ## Nawigacja
 
@@ -85,7 +85,7 @@ Kategorie odpowiadają aktualnej pomocy Nuclei:
 
 Minimalne poprawne polecenie wymaga celu albo trybu, który celu nie potrzebuje, na przykład listowania lub walidacji szablonów. Generator preferuje `-u` dla pojedynczego celu. Wartości wielokrotne są przechowywane jako lista i bezpiecznie cytowane.
 
-Opcje DAST, Interactsh, Uncover, chmury, uwierzytelniania, własnych nagłówków, plików lokalnych, kodu, AI oraz aktualizacji są dostępne edukacyjnie. Otrzymują szczegółowe ostrzeżenia o ruchu sieciowym, usługach zewnętrznych, sekretach, kosztach lub modyfikacji lokalnego środowiska. NetScope nie zapisuje sekretów i nie oferuje gotowych wartości tokenów, haseł, kluczy ani ciasteczek.
+Opcje DAST, Interactsh, Uncover, chmury, uwierzytelniania, własnych nagłówków, plików lokalnych, kodu, AI oraz aktualizacji są dostępne edukacyjnie. Otrzymują szczegółowe ostrzeżenia o ruchu sieciowym, usługach zewnętrznych, sekretach, kosztach lub modyfikacji lokalnego środowiska. Northbyte Radar nie zapisuje sekretów i nie oferuje gotowych wartości tokenów, haseł, kluczy ani ciasteczek.
 
 ## Źródła i aktualność
 
@@ -126,7 +126,7 @@ Testy jednostkowe obejmują:
 - brak utrwalania pól sekretów,
 - zgodność dotychczasowego działania Nmap.
 
-Po testach katalogu zostaną wykonane pełne testy NetScope, `git diff --check`, świeży build i uruchomienie na iPhonie 17 Simulator. Instalacja na fizycznym iPhonie nastąpi dopiero po osobnym poleceniu użytkownika.
+Po testach katalogu zostaną wykonane pełne testy aplikacji, `git diff --check`, świeży build i uruchomienie na iPhonie 17 Simulator. Instalacja na fizycznym iPhonie nastąpi dopiero po osobnym poleceniu użytkownika.
 
 ## Etapy wdrożenia
 

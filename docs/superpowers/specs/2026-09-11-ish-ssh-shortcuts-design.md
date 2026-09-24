@@ -6,7 +6,7 @@ Data: 2026-09-11
 
 Usunąć ze Startu skróty dublujące pięć dolnych zakładek i zastąpić je jednym wejściem do uporządkowanej biblioteki poleceń dla użytkowników posiadających iPhone, iSH oraz Maca dostępnego przez SSH.
 
-NetScope wyłącznie przygotowuje i kopiuje polecenia. Nie nawiązuje połączenia SSH, nie uruchamia poleceń, nie przechowuje hasła ani klucza prywatnego.
+Northbyte Radar wyłącznie przygotowuje i kopiuje polecenia. Nie nawiązuje połączenia SSH, nie uruchamia poleceń, nie przechowuje hasła ani klucza prywatnego.
 
 ## Nawigacja
 
@@ -60,7 +60,7 @@ Lista jest wyszukiwalna po tytule, opisie i kategorii. Nie będzie ulubionych, h
 
 Pięć etapów w zakładce Nmap pozostaje bez zmian. Otwarcie etapu prowadzi do odpowiadającego mu skrótu iSH/SSH oraz ustawia wykryty adres lub podsieć jako proponowany cel. Szczegóły techniczne pozostają domyślnie zwinięte.
 
-Postęp jest ręczny: użytkownik oznacza etap jako ukończony dopiero po wykonaniu polecenia i sprawdzeniu wyniku. NetScope nie interpretuje jeszcze wklejonych raportów.
+Postęp jest ręczny: użytkownik oznacza etap jako ukończony dopiero po wykonaniu polecenia i sprawdzeniu wyniku. Northbyte Radar nie interpretuje jeszcze wklejonych raportów.
 
 ## Struktura kodu
 

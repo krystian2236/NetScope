@@ -9,6 +9,12 @@ struct ScannerView: View {
     NavigationStack {
       ScrollView {
         LazyVStack(spacing: 12) {
+          #if NETSCOPE_DEV
+          HStack {
+            UIRefCopyButton(ref: .scanner)
+            Spacer()
+          }
+          #endif
           NetworkHeaderCard(context: scanner.context)
           StartDestinations(
             scanner: scanner,
@@ -23,22 +29,6 @@ struct ScannerView: View {
             onCancel: scanner.cancel
           )
           ScanStatusView(phase: scanner.phase, deviceCount: scanner.devices.count)
-          if scanner.sessionDetails != nil {
-            NavigationLink {
-              ScanDetailsView(scanner: scanner)
-            } label: {
-              HStack {
-                Label("Szczegóły przebiegu", systemImage: "chart.bar.doc.horizontal")
-                  .font(.caption.weight(.semibold))
-                Spacer()
-                Image(systemName: "chevron.right")
-                  .font(.caption2.weight(.bold))
-              }
-              .padding(10)
-              .background(.background, in: RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
-          }
           if !scanner.devices.isEmpty {
             DeviceSummaryStrip(devices: scanner.devices)
           } else if !scanner.phase.isScanning {
@@ -55,10 +45,10 @@ struct ScannerView: View {
       .background(Color(.systemGroupedBackground))
       .navigationTitle("Skan sieci")
       .navigationBarTitleDisplayMode(.inline)
-    }
   }
+}
 
-  private func startScan() {
+private func startScan() {
     Task { await scanner.scan() }
   }
 
@@ -202,7 +192,7 @@ private struct ScanWorkflowView: View {
   }
 }
 
-private enum DeviceFilter: String, CaseIterable, Identifiable {
+enum DeviceFilter: String, CaseIterable, Identifiable {
   case all
   case unknown
   case attention
@@ -369,7 +359,7 @@ private struct ScanStatusView: View {
         ProgressView(value: Double(completed), total: Double(max(total, 1)))
           .tint(.cyan)
           .accessibilityLabel("Postęp skanowania")
-          .accessibilityValue("(completed) z (total) adresów")
+          .accessibilityValue("\(completed) z \(total) adresów")
       }
     case .finished(let date):
       InfoBanner(
@@ -419,7 +409,7 @@ private struct DeviceSummaryStrip: View {
   }
 }
 
-private struct DeviceFilterBar: View {
+struct DeviceFilterBar: View {
   @Binding var selection: DeviceFilter
 
   var body: some View {

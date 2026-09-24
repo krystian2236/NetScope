@@ -90,7 +90,7 @@ enum ISHScanMode: String, CaseIterable, Identifiable, Sendable {
   var subtitle: String {
     switch self {
     case .inventory: "Popularne usługi i otwarte porty"
-    case .extended: "Pełny profil NetScope i przyczyna wyniku"
+    case .extended: "Pełny profil Northbyte Radar i przyczyna wyniku"
     case .serviceDetails: "Lekka identyfikacja wersji usług"
     }
   }
@@ -105,7 +105,7 @@ enum ISHCommandBuilder {
     knownPorts: [UInt16] = []
   ) -> String {
     guard ISHTargetValidator.isPrivate(target) else {
-      return "# NetScope: wybierz prywatny adres IPv4 lub lokalną podsieć."
+      return "# Northbyte Radar: wybierz prywatny adres IPv4 lub lokalną podsieć."
     }
 
     let ports = ports(for: mode, knownPorts: knownPorts)
@@ -123,7 +123,7 @@ enum ISHCommandBuilder {
     knownPorts: [UInt16] = []
   ) -> String {
     guard ISHTargetValidator.isPrivate(target) else {
-      return "#!/bin/sh\n\necho 'NetScope: nieprawidłowy prywatny cel IPv4.'\nexit 2\n"
+      return "#!/bin/sh\n\necho 'Northbyte Radar: nieprawidłowy prywatny cel IPv4.'\nexit 2\n"
     }
 
     let ports = ports(for: mode, knownPorts: knownPorts)
@@ -135,7 +135,7 @@ enum ISHCommandBuilder {
       #!/bin/sh
       set -eu
 
-      # NetScope iSH Toolkit
+      # Northbyte Radar iSH Toolkit
       # Używaj wyłącznie w swojej sieci lub za zgodą jej właściciela.
       TARGET=\(shellQuoted(target))
       PORTS=\(shellQuoted(ports))
