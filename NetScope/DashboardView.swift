@@ -75,7 +75,11 @@ struct DashboardView: View {
 
   private var primaryScanAction: some View {
     NavigationLink {
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+      if scanner.phase.isScanning {
+        ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
+      } else {
+        NetworkOverviewView(scanner: scanner, tools: tools, knownDeviceStore: knownDeviceStore)
+      }
     } label: {
       HStack(spacing: 11) {
         Image(systemName: primaryActionIcon)
@@ -103,24 +107,21 @@ struct DashboardView: View {
   }
 
   private var primaryActionTitle: String {
-    if reviewCount > 0 { return "Przejrzyj zmiany" }
     if scanner.phase.isScanning { return "Pokaż skan" }
-    if !scanner.history.isEmpty { return "Skanuj ponownie" }
-    return "Rozpocznij pierwszy skan"
+    if reviewCount > 0 { return "Przejrzyj zmiany w Network" }
+    return "Otwórz Network"
   }
 
   private var primaryActionSubtitle: String {
-    if reviewCount > 0 { return "Nowe lub nieznane urządzenia" }
     if scanner.phase.isScanning { return "Przejdź do postępu skanu" }
-    if !scanner.history.isEmpty { return "Uruchom skan z ekranu Scan" }
-    return "Tylko prywatny zakres sieci"
+    if reviewCount > 0 { return "Nowe lub nieznane urządzenia" }
+    return "Stan połączenia, skan i sprawdzanie portu"
   }
 
   private var primaryActionIcon: String {
-    if reviewCount > 0 { return "exclamationmark.bubble" }
     if scanner.phase.isScanning { return "hourglass" }
-    if !scanner.history.isEmpty { return "arrow.clockwise" }
-    return "dot.radiowaves.left.and.right"
+    if reviewCount > 0 { return "exclamationmark.bubble" }
+    return "network"
   }
 
   private var primaryActions: some View {
@@ -136,8 +137,6 @@ struct DashboardView: View {
       }
 
       LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-        actionButton("Network", icon: "network", tab: .network)
-        scanActionButton
         actionButton("Diagnose", icon: "waveform.path.ecg", tab: .diagnose)
         actionButton("Lab", icon: "graduationcap.fill", tab: .laboratory)
       }
@@ -152,20 +151,6 @@ struct DashboardView: View {
       .buttonStyle(.bordered)
       .tint(.cyan)
     }
-  }
-
-  private var scanActionButton: some View {
-    NavigationLink {
-      ScannerView(scanner: scanner, knownDeviceStore: knownDeviceStore, tools: tools)
-    } label: {
-      Label("Scan", systemImage: "dot.radiowaves.left.and.right")
-        .font(.caption.weight(.semibold))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(11)
-        .background(.background, in: RoundedRectangle(cornerRadius: 13))
-    }
-    .buttonStyle(.plain)
-    .foregroundStyle(.primary)
   }
 
   private func actionButton(_ title: String, icon: String, tab: AppTab) -> some View {

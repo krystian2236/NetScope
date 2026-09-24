@@ -1,11 +1,14 @@
-# NetScope — historia zmian
+# Northbyte Radar — historia zmian
 
 ## Unreleased
 
 - dodano Toolbox jako piątą zakładkę nawigacji,
 - dodano kartę „Ostatnia aktywność” z bieżącym stanem i czasem ostatniego skanu,
 - dodano w Network przyciski „Skanuj sieć” i „Sprawdź port”,
-- zwiększono wersję aplikacji do 2.1.2 (build 12).
+- ustawiono Network jako główne miejsce uruchamiania skanu,
+- dodano rozwijane szczegóły otwartego portu z zawijanymi wartościami i krótkimi zaleceniami,
+- ujednolicono widoczną nazwę aplikacji jako Northbyte Radar,
+- zwiększono wersję aplikacji do 2.1.2 (build 14).
 
 ## 2.1.2
 

@@ -1,4 +1,4 @@
-# NetScope Toolbox Workflow Design
+# Northbyte Radar Toolbox Workflow Design
 
 ## Cel
 
@@ -20,7 +20,7 @@ Każde narzędzie określa wymagane dane wejściowe. Kafelek jest aktywny tylko 
 
 ## Zakres MVP
 
-- Discover: natywny skan NetScope, Nmap host discovery, Netdiscover.
+- Discover: natywny skan Northbyte Radar, Nmap host discovery, Netdiscover.
 - Inspect: Nmap common ports, Nmap service detection, reverse DNS, traceroute.
 - Verify: Dig dla DNS, Curl i WhatWeb dla HTTP, SSLScan dla TLS, Nikto dla HTTP oraz Enum4linux-ng dla SMB.
 - Narzędzia uruchamiane poza iOS mają czytelne oznaczenie „Agent Mac/Kali”. MVP wykorzystuje istniejący bezpieczny handoff SSH; bez automatycznego wykonywania poleceń i bez przechowywania haseł.

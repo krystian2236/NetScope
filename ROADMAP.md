@@ -1,4 +1,4 @@
-# NetScope — roadmap procesu AI
+# Northbyte Radar — roadmap procesu AI
 
 To roadmap procesu, nie konkurencyjny plan funkcjonalny. Istniejące specyfikacje w `docs/superpowers/specs/`, plan `docs/superpowers/plans/2026-09-12-toolbox-workflow.md` i checkout VectorNet jako referencja pozostają źródłem zakresu produktu.
 

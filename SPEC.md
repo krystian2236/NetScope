@@ -1,8 +1,8 @@
-# NetScope — standard pracy AI
+# Northbyte Radar — standard pracy AI
 
 ## Zakres
 
-Ten dokument opisuje warstwę procesu dla prac nad NetScope. Zakres produktu pozostaje w istniejących specyfikacjach `docs/superpowers/specs/` oraz w istniejącym planie `docs/superpowers/plans/2026-09-12-toolbox-workflow.md`, z checkoutem VectorNet jako referencją. Ten plik nie zastępuje tamtych decyzji.
+Ten dokument opisuje warstwę procesu dla prac nad Northbyte Radar. Zakres produktu pozostaje w istniejących specyfikacjach `docs/superpowers/specs/` oraz w istniejącym planie `docs/superpowers/plans/2026-09-12-toolbox-workflow.md`, z checkoutem VectorNet jako referencją. Ten plik nie zastępuje tamtych decyzji.
 
 ## Zasady
 

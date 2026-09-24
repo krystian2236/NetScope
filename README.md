@@ -1,6 +1,6 @@
-# NetScope
+# Northbyte Radar
 
-NetScope to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
+Northbyte Radar to natywna aplikacja SwiftUI na iOS 17+, która wykrywa urządzenia
 i popularne usługi w prywatnej sieci lokalnej.
 
 ## Funkcje w wersji 2.1
@@ -43,7 +43,7 @@ Ekran **Start → Narzędzia dla iSH** przygotowuje:
   przenieść do lokalizacji iSH i uruchomić,
 - trzy tryby: inwentaryzacja, rozszerzony TCP i lekka identyfikacja usług.
 
-NetScope używa w poleceniach iSH trybu `--unprivileged -sT`, czyli zwykłych
+Northbyte Radar używa w poleceniach iSH trybu `--unprivileged -sT`, czyli zwykłych
 połączeń TCP zamiast surowych pakietów. Cel jest ograniczony do prywatnego IPv4.
 Samodzielny skrypt `NetScope-iSH-Toolkit.sh` jest również dołączony obok paczki
 projektu.

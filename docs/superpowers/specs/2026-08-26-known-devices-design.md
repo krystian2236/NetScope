@@ -1,8 +1,8 @@
-# NetScope Known Devices — Design
+# Northbyte Radar Known Devices — Design
 
 ## Goal
 
-Add a private, on-device registry of devices discovered by NetScope. Every device found by a successful network scan is remembered automatically. Users can give it a custom name and mark it as trusted or unknown. This registry will later provide the foundation for comparing scans and reporting newly discovered devices.
+Add a private, on-device registry of devices discovered by Northbyte Radar. Every device found by a successful network scan is remembered automatically. Users can give it a custom name and mark it as trusted or unknown. This registry will later provide the foundation for comparing scans and reporting newly discovered devices.
 
 ## Scope
 
@@ -24,7 +24,7 @@ This release does not include iCloud sync, background scans, notifications, a de
 
 iOS does not expose complete ARP or MAC-address information to the app. A saved record is therefore identified by the combination of a network identifier and IPv4 address. The network identifier must be derived locally from the available subnet context and must not leave the device.
 
-Hostname is stored as supporting metadata, not as the primary identity. If a physical device receives another IP address, NetScope may register it as a new device. The interface must describe this limitation without claiming stable hardware identification.
+Hostname is stored as supporting metadata, not as the primary identity. If a physical device receives another IP address, Northbyte Radar may register it as a new device. The interface must describe this limitation without claiming stable hardware identification.
 
 ## Data Model
 
@@ -134,4 +134,4 @@ UI-facing validation verifies that scanner rows, filters, device details, and da
 
 ## Privacy and App Store Positioning
 
-The registry is stored only on the device and contains observations from the user’s current private local network. No account or cloud service is required. App Store metadata and the in-app privacy explanation must accurately state these practices. NetScope must describe devices as new, unknown, or trusted by the user and must not characterize an unknown device as malicious solely because it has not been classified.
+The registry is stored only on the device and contains observations from the user’s current private local network. No account or cloud service is required. App Store metadata and the in-app privacy explanation must accurately state these practices. Northbyte Radar must describe devices as new, unknown, or trusted by the user and must not characterize an unknown device as malicious solely because it has not been classified.
