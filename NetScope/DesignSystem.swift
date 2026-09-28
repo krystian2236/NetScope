@@ -1,57 +1,250 @@
 import SwiftUI
 
-public enum NetScopeDesign {
-  public static let accent = Color.cyan
-  public static let accentSoft = Color.cyan.opacity(0.12)
-  public static let cardBackground = Color(UIColor.secondarySystemBackground)
-  public static let surface = Color(UIColor.systemBackground)
-  public static let success = Color.green
-  public static let warning = Color.orange
-  public static let danger = Color.red
-  public static let textPrimary = Color.primary
-  public static let textSecondary = Color.secondary
+struct ToolboxView: View {
+  @ObservedObject var scanner: NetworkScanner
+  @Binding var workspaceRouteRaw: String
 
-  public static let spacingXS: CGFloat = 4
-  public static let spacingS: CGFloat = 8
-  public static let spacingM: CGFloat = 12
-  public static let spacingL: CGFloat = 16
-  public static let spacingXL: CGFloat = 20
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        LazyVStack(spacing: 12) {
+          NetScopeCard {
+            InfoBanner(
+              icon: "arrow.up.circle.fill",
+              title: "NetScope Toolbox",
+              message: "Buduj poprawne polecenia krok po kroku i ucz się, co robi każdy fragment."
+            )
+          }
 
-  public static let radiusS: CGFloat = 8
-  public static let radiusM: CGFloat = 12
-  public static let radiusL: CGFloat = 16
-}
+          toolLink(
+            title: "Nmap",
+            subtitle: "Wybieraj opcje według kategorii",
+            icon: "scope",
+            color: .cyan
+          ) {
+            ToolLearningView(
+              tool: NmapCatalog.definition,
+              initialTarget: scanner.context?.scanRangeDescription ?? ""
+            )
+          }
 
-public struct NetScopeCard<Content: View>: View {
-  let content: Content
+          toolLink(
+            title: "Nuclei",
+            subtitle: "Buduj kontrole oparte na szablonach",
+            icon: "checkmark.shield",
+            color: .indigo
+          ) {
+            ToolLearningView(
+              tool: NucleiCatalog.definition,
+              initialTarget: scanner.context?.address ?? ""
+            )
+          }
 
-  public init(@ViewBuilder content: () -> Content) {
-    self.content = content()
+          NetScopeCard {
+            InfoBanner(
+              icon: "hand.raised.fill",
+              title: "Tryb defensywny",
+              message: "Uruchamiaj narzędzia tylko we własnej sieci lub za zgodą właściciela. NetScope nie udostępnia modułów eksploatacji ani łamania haseł."
+            )
+          }
+        }
+        .padding(12)
+      }
+      .background(Color(.systemGroupedBackground))
+      .navigationTitle("Toolbox")
+      .navigationBarTitleDisplayMode(.inline)
+    }
   }
 
-  public var body: some View {
-    content
-      .padding(NetScopeDesign.spacingM)
-      .background(
-        NetScopeDesign.cardBackground,
-        in: RoundedRectangle(cornerRadius: NetScopeDesign.radiusM, style: .continuous)
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: NetScopeDesign.radiusM, style: .continuous)
-          .stroke(Color.secondary.opacity(0.08), lineWidth: 1)
-      )
+  private func toolLink<Destination: View>(
+    title: String,
+    subtitle: String,
+    icon: String,
+    color: Color,
+    @ViewBuilder destination: () -> Destination
+  ) -> some View {
+    NavigationLink(destination: destination()) {
+      NetScopeCard {
+        HStack(spacing: 12) {
+          Image(systemName: icon)
+            .font(.title3)
+            .foregroundStyle(.white)
+            .frame(width: 42, height: 42)
+            .background(color, in: RoundedRectangle(cornerRadius: 11))
+          VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.headline)
+            Text(subtitle).font(.caption).foregroundStyle(.secondary)
+          }
+          Spacer()
+          Image(systemName: "chevron.right")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+    .buttonStyle(.plain)
   }
 }
 
-public struct NetScopeActionButtonStyle: ButtonStyle {
-  public func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(.subheadline.weight(.semibold))
-      .padding(.horizontal, NetScopeDesign.spacingL)
-      .padding(.vertical, NetScopeDesign.spacingS)
-      .frame(maxWidth: .infinity, alignment: .center)
-      .background(configuration.isPressed ? NetScopeDesign.accent.opacity(0.8) : NetScopeDesign.accent)
-      .foregroundStyle(.white)
-      .clipShape(RoundedRectangle(cornerRadius: NetScopeDesign.radiusS, style: .continuous))
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
