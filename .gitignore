@@ -10,11 +10,26 @@ xcuserdata/
 .build/
 Packages/
 
-# Distribution and macOS metadata
+# Distribution and signing
 *.ipa
 *.dSYM/
 *.dSYM.zip
 *.xcarchive/
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+*.key
+*.pem
+
+# Local configuration
+.env
+.env.*
+!.env.example
+Secrets.xcconfig
+Local.xcconfig
+
+# macOS metadata
 .DS_Store
 
 # Local Git worktrees
