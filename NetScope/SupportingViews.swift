@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct DeviceRow: View {
   let device: NetworkDevice
@@ -45,7 +44,7 @@ struct DeviceRow: View {
         .accessibilityHidden(true)
     }
     .padding(10)
-    .background(.background, in: RoundedRectangle(cornerRadius: 12))
+    .background(NetScopeDesign.cardBackground, in: RoundedRectangle(cornerRadius: 12))
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
     .accessibilityLabel(
@@ -565,3 +564,4 @@ struct ScanCSVDocument: FileDocument {
     "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
   }
 }
+
